@@ -191,6 +191,23 @@
             } 
           ] 
         },
+        { 
+          "id": "BD", 
+          "name": "Bangladesh (孟加拉)", 
+          "keyword_file": "kw_BD.txt", 
+          "states": [
+            { 
+              "id": "Default", 
+              "name": "Default State", 
+              "cities": [
+                { 
+                  "id": "Dhaka", 
+                  "name": "Dhaka (达卡)" 
+                } 
+              ] 
+            } 
+          ] 
+        },
         {
           "id": "KR",
           "name": "South Korea (韩国)",
