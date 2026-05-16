@@ -94,8 +94,8 @@ fi
 SESSION_BASE_LAT=$(get_random_coord $BASE_LAT 270)
 SESSION_BASE_LON=$(get_random_coord $BASE_LON 270)
 
-# 【核心升级】随机决定本次上网深度 (6 - 10 个复合动作，配合高频长效拉伸)
-TOTAL_ACTIONS=$((6 + RANDOM % 5))
+# 【核心升级】随机决定本次上网深度 (5 - 8 个复合动作，配合高频长效拉伸)
+TOTAL_ACTIONS=$((5 + RANDOM % 4))
 
 log "$MODULE_NAME" "INFO " "当前出网 IP: $CURRENT_IP"
 log "$MODULE_NAME" "INFO " "设备指纹锁定: ${SESSION_UA:0:45}..."
@@ -165,7 +165,8 @@ for ((i=1; i<=TOTAL_ACTIONS; i++)); do
     # 【核心升级】行为拉伸：每次动作后强制休眠 90 - 120 秒
     # 结合动作总数，总耗时将稳定在 10 分钟 到 20 分钟之间
     if [ $i -lt $TOTAL_ACTIONS ]; then
-        SLEEP_TIME=$((90 + RANDOM % 31))
+        # 【时间收敛修复】休眠控制在 45-75 秒，防止跨周期重叠导致进程被强杀
+        SLEEP_TIME=$((45 + RANDOM % 31))
         log "$MODULE_NAME" "WAIT " "阅读当前页面内容，模拟停留 $SLEEP_TIME 秒..."
         sleep $SLEEP_TIME
     fi
@@ -229,7 +230,7 @@ fi
 YT_PR_GL=""
 # [修复] 必须带上本轮循环的专属 UA (-A "$SESSION_UA")，防止被 Google CDN 丢进无状态爬虫兜底页
 YT_PR_HTML=$(curl $CURL_BIND_OPT $DYNAMIC_IP_PREF -m 10 -s -L -A "$SESSION_UA" "https://www.youtube.com/premium")
-if echo "$YT_PR_HTML" | grep -q 'www.google.cn'; then
+if [[ "$YT_PR_HTML" == *"www.google.cn"* ]]; then
     YT_PR_GL="CN"
 else
     # 穷举风控变量提取
@@ -242,7 +243,7 @@ fi
 YT_MU_GL=""
 # [修复] 同样加持 UA 装甲，强行唤出完整版前端框架
 YT_MU_HTML=$(curl $CURL_BIND_OPT $DYNAMIC_IP_PREF -m 10 -s -L -A "$SESSION_UA" "https://music.youtube.com/")
-if echo "$YT_MU_HTML" | grep -q 'www.google.cn'; then
+if [[ "$YT_MU_HTML" == *"www.google.cn"* ]]; then
     YT_MU_GL="CN"
 else
     # [修复] Music 的核心配置变量是 INNERTUBE_CONTEXT_GL
