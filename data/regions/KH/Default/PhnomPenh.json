@@ -8,21 +8,21 @@
   },
   "trust_module": {
     "white_urls": [
-      "https://www.akp.gov.kh/",
-      "https://www.cambodiadaily.com/2026/05/05/21/45/87404/",
       "https://www.cambodiadaily.com/2026/05/01/13/59/87388/",
-      "https://www.cambodiadaily.com/2026/05/01/12/57/87381/",
-      "https://www.cambodiadaily.com/2026/05/01/14/23/87392/",
+      "https://www.akp.gov.kh/",
+      "https://www.cambodiadaily.com/2026/05/05/21/50/87405/",
+      "https://www.cambodiadaily.com/2026/05/01/14/49/87397/",
+      "https://www.cambodiadaily.com/2026/05/05/21/58/87403/",
+      "https://www.cambodiadaily.com/2026/05/01/14/11/87391/",
+      "https://www.khmertimeskh.com/",
+      "https://www.cambodiadaily.com/2026/05/18/12/53/87418/",
+      "https://www.nbc.gov.kh/",
+      "https://www.cambodiadaily.com/2026/05/05/21/44/87406/",
       "https://www.phnompenhpost.com/",
       "https://www.gov.kh/",
-      "https://www.cambodiadaily.com/2026/05/01/14/11/87391/",
-      "https://www.cambodiadaily.com/2026/05/05/21/50/87405/",
-      "https://www.cambodiadaily.com/2026/05/01/13/41/87384/",
-      "https://www.khmertimeskh.com/",
-      "https://www.cambodiadaily.com/2026/05/01/14/49/87397/",
-      "https://www.cambodiadaily.com/2026/05/05/21/44/87406/",
-      "https://www.cambodiadaily.com/2026/05/05/21/58/87403/",
-      "https://www.nbc.gov.kh/"
+      "https://www.cambodiadaily.com/2026/05/01/14/23/87392/",
+      "https://www.cambodiadaily.com/2026/05/05/21/45/87404/",
+      "https://www.cambodiadaily.com/2026/05/18/13/09/87422/"
     ],
     "static_urls": [
       "https://www.gov.kh/",
