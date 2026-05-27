@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # ==========================================================
-# 脚本名称: agent_daemon.sh (受控节点 Webhook 守护进程 - 动态锚点版)
-# 核心功能: 智能防打扰注册、进程自检、模块级路由分发(403拦截)
+# 脚本名称: agent_daemon.sh
+# 核心功能: TLS 隧道构建、HMAC 动态鉴权、防重放攻击、模块级零信任路由
 # ==========================================================
 
 INSTALL_DIR="/opt/ip_sentinel"
@@ -12,23 +12,26 @@ IP_CACHE="${INSTALL_DIR}/core/.last_ip"
 [ ! -f "$CONFIG_FILE" ] && exit 1
 source "$CONFIG_FILE"
 
-# 如果没有配置 TG，说明未开启联控模式，直接退出
+# [战术核心] 若未配置司令部凭证，则判定为单机运行模式，主动进入休眠
 [ -z "$TG_TOKEN" ] || [ -z "$CHAT_ID" ] && exit 0
 
-# 默认 Webhook 监听端口
 AGENT_PORT=${AGENT_PORT:-9527}
-# [v3.5.2 核心] 载入不可变主键与可变展示名 (双轨身份)
+
+# ----------------------------------------------------------
+# [身份锚定] 载入不可变主键与展示别名 (双轨身份映射)
+# ----------------------------------------------------------
 if [ -z "$NODE_NAME" ]; then
     IP_HASH=$(echo "${PUBLIC_IP:-127.0.0.1}" | md5sum | cut -c 1-4 | tr 'a-z' 'A-Z')
     NODE_NAME="$(hostname | tr -cd 'a-zA-Z0-9' | cut -c 1-10)-${IP_HASH}"
 fi
 NODE_ALIAS="${NODE_ALIAS:-$NODE_NAME}"
 
-
-# 1. 尝试获取实时公网 IP
+# ----------------------------------------------------------
+# [网络侦测] 实时公网 IP 嗅探与静默状态更新
+# ----------------------------------------------------------
 RAW_IP=$(curl -${IP_PREF:-4} -s -m 5 api.ip.sb/ip | tr -d '[:space:]')
 
-# [v3.3.1 修改] 为新获取到的 v6 自动加方括号；如果网络波动没抓到，强制信任本地 config 中的公网面孔
+# [防线/容灾] 为 IPv6 自动装载方括号护甲；API 失效时退回静态配置锚点
 if [ -n "$RAW_IP" ]; then
     if [[ "$RAW_IP" == *":"* ]] && [[ "$RAW_IP" != *"["* ]]; then
         AGENT_IP="[${RAW_IP}]"
@@ -44,7 +47,7 @@ if [ -n "$AGENT_IP" ]; then
     [ -f "$IP_CACHE" ] && LAST_IP=$(cat "$IP_CACHE" | tr -d '[:space:]')
 
     if [ "$AGENT_IP" != "$LAST_IP" ]; then
-        # [静音手术] 仅在本地静默更新 IP 缓存，彻底切除重复的 TG 发信逻辑，做沉默的守夜人
+        # [底层交互] 仅执行本地缓存重写，切除高频发信逻辑，保持静默侦听
         echo "$AGENT_IP" > "$IP_CACHE"
         echo "ℹ️ [Agent] 发现本地 IP 变动，已静默更新缓存: $AGENT_IP"
     else
@@ -52,8 +55,9 @@ if [ -n "$AGENT_IP" ]; then
     fi
 fi
 
-# ================== [v3.6.3 新增: 自动生成自签名 TLS 加密证书] ==================
-# [修复] 彻底废除官方网关免 TLS 的裸奔逻辑，全网强制生成证书装甲
+# ==========================================================
+# [加密通信] 强制构建自签名 TLS 装甲，屏蔽中间人嗅探
+# ==========================================================
 CERT_FILE="${INSTALL_DIR}/core/cert.pem"
 KEY_FILE="${INSTALL_DIR}/core/key.pem"
 if [ ! -f "$CERT_FILE" ] || [ ! -f "$KEY_FILE" ]; then
@@ -62,9 +66,10 @@ if [ ! -f "$CERT_FILE" ] || [ ! -f "$KEY_FILE" ]; then
         -keyout "$KEY_FILE" -out "$CERT_FILE" \
         -subj "/C=US/O=IP-Sentinel/CN=Agent-Sec" >/dev/null 2>&1 || true
 fi
-# ==============================================================================
 
-# 3. 启动轻量级 Python3 Webhook 监听服务 (v3.0.4 动态 HMAC 签名防重放)
+# ==========================================================
+# [引擎核心] Python3 高并发 Webhook 侦听与路由枢纽
+# ==========================================================
 cat > "${INSTALL_DIR}/core/webhook.py" << 'EOF'
 import http.server
 import socketserver
@@ -72,26 +77,26 @@ import subprocess
 import sys
 import os
 import html
-# ================== [v3.0.4 新增密码学与解析依赖] ==================
 import urllib.parse
 import urllib.request
 import hmac
 import hashlib
 import time
-# ====================================================================
 
 PORT = int(sys.argv[1])
 
-# 🛡️ 防重放攻击 (Nonce 缓存池)
+# ----------------------------------------------------------
+# [防御矩阵] Nonce 缓存池防重放攻击 (Replay Attack)
+# ----------------------------------------------------------
 USED_SIGNS = {}
 def clean_used_signs():
     now = time.time()
-    # 清理过期签名 (超 60 秒的安全窗口)
+    # [安全策略] 滑动清理超 65 秒过期签名，保障内存健康
     expired = [s for s, t in USED_SIGNS.items() if now - t > 65]
     for s in expired:
         del USED_SIGNS[s]
 
-# 🛡️ 提取全局鉴权 Token (利用 CHAT_ID 作为 PSK 预共享密钥)
+# [权限鉴权] 提取 CHAT_ID 作为 PSK 预共享密钥
 AUTH_TOKEN = ""
 if os.path.exists('/opt/ip_sentinel/config.conf'):
     with open('/opt/ip_sentinel/config.conf', 'r') as f:
@@ -103,7 +108,7 @@ if os.path.exists('/opt/ip_sentinel/config.conf'):
 
 class AgentHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        # 🛡️ [v3.0.4 核心] URL 解析与动态 HMAC-SHA256 签名校验
+        # [权限校验] 路径解析与 HMAC-SHA256 动态签名核验
         parsed = urllib.parse.urlparse(self.path)
         req_path = parsed.path
         
@@ -112,7 +117,6 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
             req_t = query.get('t', [''])[0]
             req_sign = query.get('sign', [''])[0]
             
-            # 校验 1：参数是否齐全
             if not req_t or not req_sign:
                 self.send_response(401)
                 self.end_headers()
@@ -121,7 +125,7 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
                 
             try:
                 current_time = int(time.time())
-                # 校验 2：时间戳防重放 (误差 ±60秒 内有效，拒绝隔夜抓包重放)
+                # [防重放 1] 校验时间戳防偏离 (±60秒窗口，免疫隔夜抓包重放)
                 if abs(current_time - int(req_t)) > 60:
                     self.send_response(401)
                     self.end_headers()
@@ -132,7 +136,7 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
                 self.end_headers()
                 return
             
-            # 校验 2.5：基于 60秒 窗口的精确重放拦截 (拦截 MITM 并发洗劫)
+            # [防重放 2] Nonce 精确核对 (拦截 60 秒内的 MITM 并发重放洗劫)
             clean_used_signs()
             if req_sign in USED_SIGNS:
                 self.send_response(401)
@@ -140,21 +144,22 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
                 self.wfile.write(b"401 Unauthorized: Replay Attack Detected\n")
                 return
                 
-            # 校验 3：HMAC 数据完整性与身份合法性校验
+            # [身份核验] 数据完整性校验，使用 compare_digest 免疫时序探测攻击
             msg = f"{req_path}:{req_t}".encode('utf-8')
             expected_sign = hmac.new(AUTH_TOKEN.encode('utf-8'), msg, hashlib.sha256).hexdigest()
             
-            # 使用 compare_digest 防御时序攻击
             if not hmac.compare_digest(expected_sign, req_sign):
                 self.send_response(401)
                 self.end_headers()
                 self.wfile.write(b"401 Unauthorized: Signature Mismatch\n")
                 return
             
-            # 鉴权通过，记录该签名至防重放内存池
+            # 鉴权通过，登记 Nonce 载荷
             USED_SIGNS[req_sign] = current_time
 
-        # ================== 路由分发 (恢复为安全的精确匹配) ==================
+        # ==========================================================
+        # [指令分发] 模块级业务路由矩阵 (精确匹配策略)
+        # ==========================================================
         
         # 路由 0: 全局统筹调度
         if req_path == '/trigger_run':
@@ -168,7 +173,7 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
                 self.send_response(404)
                 self.end_headers()
                 
-        # 路由 1: Google 区域纠偏
+        # 路由 1: Google 区域纠偏探测
         elif req_path == '/trigger_google':
             if os.path.exists('/opt/ip_sentinel/core/mod_google.sh'):
                 self.send_response(200)
@@ -182,7 +187,7 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(b"403 Forbidden: Google Module Disabled\n")
 
-        # 路由 2: IP 信用净化
+        # 路由 2: IP 信用数据清洗
         elif req_path == '/trigger_trust':
             if os.path.exists('/opt/ip_sentinel/core/mod_trust.sh'):
                 self.send_response(200)
@@ -196,7 +201,7 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(b"403 Forbidden: Trust Module Disabled\n")
 
-        # 路由 3: 触发战报推送
+        # 路由 3: 触发异步战报生成
         elif req_path == '/trigger_report':
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
@@ -204,7 +209,7 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(b"Action Accepted: tg_report\n")
             os.system("nohup bash /opt/ip_sentinel/core/tg_report.sh >/dev/null 2>&1 &")
 
-        # 路由 4: 抓取并回传实时日志
+        # 路由 4: 获取并回传实时日志切片
         elif req_path == '/trigger_log':
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
@@ -229,13 +234,13 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
                         if lines:
                             log_data = html.escape("".join(lines[-15:]))
                 
-                # [v3.5.2 核心] 获取版本与节点展示别名
+                # 动态提取终端状态以构建回传信息
                 local_ver = config.get('AGENT_VERSION', '未知')
                 node_alias = config.get('NODE_ALIAS', config.get('NODE_NAME', 'Unknown-Node'))
                 
                 text_msg = f"📄 <b>[{node_alias}] 实时日志 (v{local_ver}):</b>\n<pre><code>{log_data}</code></pre>"
                 
-                # [v4.0.3 体验升级] 引入 json 模块并改用 JSON Payload，挂载返回控制台按钮
+                # [交互反馈] 构建内联 JSON Payload 回调指令
                 import json
                 node_name_cb = config.get('NODE_NAME', 'Unknown')
                 payload = {
@@ -251,7 +256,6 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
                 req = urllib.request.Request(
                     config.get('TG_API_URL', ''), 
                     data=data,
-                    # [动态化] 彻底消灭硬编码，使用运行态版本号，并声明 JSON 头
                     headers={
                         'User-Agent': f'IP-Sentinel-Agent/{local_ver}',
                         'Content-Type': 'application/json'
@@ -262,7 +266,7 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 print(f"Log transmission failed: {e}")
 
-        # ================== [v4.0.0 新增: 触发深海声呐] ==================
+        # 路由 5: 深海声呐模块触发
         elif req_path == '/trigger_quality':
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
@@ -271,10 +275,8 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
             
             if os.path.exists('/opt/ip_sentinel/core/mod_quality.sh'):
                 os.system("nohup bash /opt/ip_sentinel/core/mod_quality.sh >/dev/null 2>&1 &")
-        # =================================================================
 
-
-        # 路由 5: 节点重命名展示别名同步接口 (Base64 终极防御版)
+        # 路由 6: 节点展示别名热修改 (全量 WAF 防护)
         elif req_path == '/trigger_rename':
             b64_alias = query.get('b64', [''])[0]
             if not b64_alias:
@@ -286,19 +288,19 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
             import re
             import base64
             try:
-                # 1. 还原 URL 安全的 Base64 字符并解码 (杜绝乱码与 WAF 拦截)
+                # [防线/容灾] 还原安全 Base64 编码，屏蔽乱码级注入风险
                 pad = len(b64_alias) % 4
                 if pad > 0:
                     b64_alias += '=' * (4 - pad)
                 b64_alias = b64_alias.replace('-', '+').replace('_', '/')
                 raw_alias = base64.b64decode(b64_alias).decode('utf-8', errors='ignore')
                 
-                # 2. 强清洗：杜绝 TG Markdown 崩溃，严格限制中英数，最大20字符
+                # 强格式清洗：剔除潜在非法字符，保护 TG 面板不被恶意解析撑爆
                 decoded_alias = raw_alias.replace('_', '-')
                 safe_alias = re.sub(r'[^a-zA-Z0-9\-\u4e00-\u9fa5]', '', decoded_alias)[:20]
                 
                 if safe_alias:
-                    # 3. 强容错读写 config.conf (引入 fcntl 排他锁与 r+ 模式防并发清空)
+                    # [底层交互] 利用 fcntl 独占锁执行安全写操作，防止并发数据被截断
                     config_path = '/opt/ip_sentinel/config.conf'
                     import fcntl
                     with open(config_path, 'r+', encoding='utf-8', errors='ignore') as f:
@@ -320,7 +322,6 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
                         f.truncate()
                         fcntl.flock(f, fcntl.LOCK_UN)
                         
-                    # [v3.5.2 极致丝滑] 移除向 TG 推送冗余报文的逻辑，直接向 Master 回执成功状态即可
                     self.send_response(200)
                     self.send_header("Content-type", "text/plain")
                     self.end_headers()
@@ -336,7 +337,7 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b"400 Bad Request: Invalid Characters\n")
 
-        # ================== [v3.5.3 新增: 模块动态启停接口] ==================
+        # 路由 7: 功能模块动态起停 (Feature Flag API)
         elif req_path == '/trigger_toggle':
             mod_name = query.get('mod', [''])[0]
             target_state = query.get('state', [''])[0].lower()
@@ -382,10 +383,9 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(f"500 Internal Error: {str(e)}\n".encode('utf-8'))
 
-        # ================== [v3.6.0 新增: 零信任 OTA 远程静默升级路由] ==================
+        # 路由 8: 零信任 OTA 远程热更新链路
         elif req_path == '/trigger_ota':
             try:
-                # 动态读取最新 config 内存态
                 config_mem = {}
                 config_path = '/opt/ip_sentinel/config.conf'
                 if os.path.exists(config_path):
@@ -396,30 +396,28 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
                                 key, val = line.split('=', 1)
                                 config_mem[key] = val.strip('"\'')
                                 
-                # 🛡️ 熔断校验 1: Agent 本地是否开启了 OTA 授权
+                # [OTA 熔断器 1] 核验 Agent 本地策略是否授予了更新权限
                 if config_mem.get('ENABLE_OTA', 'false').lower() != 'true':
                     self.send_response(403)
                     self.end_headers()
                     self.wfile.write(b"403 Forbidden: OTA Upgrade Disabled locally\n")
                     return
                     
-                # 🛡️ 熔断校验 2: 是否处于官方公共网关下 (强行硬编码拦截)
+                # [OTA 熔断器 2] 检测官方网关硬编码限制，防范越权投毒
                 if config_mem.get('TG_TOKEN', '') == 'OFFICIAL_GATEWAY_MODE':
                     self.send_response(403)
                     self.end_headers()
                     self.wfile.write(b"403 Forbidden: OTA strictly disabled under Public Gateway mode\n")
                     return
                     
-                # 校验通过，立即返回 200 回执，释放 Master 连接池
                 self.send_response(200)
                 self.send_header("Content-type", "text/plain")
                 self.end_headers()
                 self.wfile.write(b"Action Accepted: trigger_ota\n")
                 
-                # [修复] 逃逸 Systemd Cgroup，并引入 bash -n 语法树校验防砖机制
+                # [防线/容灾] 逃逸 Cgroup 隔离沙盒，并引入前置脚本语法校验防砖
                 import shutil
                 import base64
-                # 动态提取部署时的源地址，废除强制写死 main 分支，保障隔离测试环境
                 repo_url = "https://raw.githubusercontent.com/hotyue/IP-Sentinel/main"
                 if os.path.exists('/opt/ip_sentinel/core/install.sh'):
                     with open('/opt/ip_sentinel/core/install.sh', 'r') as f:
@@ -428,15 +426,13 @@ class AgentHandler(http.server.BaseHTTPRequestHandler):
                                 repo_url = line.split('=', 1)[1].strip('"\'')
                                 break
                 
-                # 动态构建报错回执文本 (第一层 Base64 隔离换行与特殊字符)
                 err_msg = f"❌ **OTA 熔断告警**\n📍 节点: `{config_mem.get('NODE_ALIAS', '未知')}`\n⚠️ 原因: 脚本语法校验(bash -n)未通过，下载可能不完整。\n🚀 状态: 升级已取消，节点安全。"
                 err_msg_b64 = base64.b64encode(err_msg.encode('utf-8')).decode('utf-8')
                 
                 tg_url = config_mem.get('TG_API_URL', '')
                 chat_id = config_mem.get('CHAT_ID', '')
                 
-                # [v3.6.3 究极防御] 采用 Base64 将整个 OTA 执行脚本封装 (第二层隔离)
-                # 彻底免疫因为 python 变量掺杂引号而导致的 shell 注入或截断
+                # 将升级逻辑进行 Base64 深层封装，免疫 Popen 或 Systemd 传递带来的指令注入风险
                 ota_script = f"""
 export SILENT_OTA="true"
 curl -fsSL {repo_url}/core/install.sh -o /tmp/ota_agent.sh
@@ -450,13 +446,11 @@ fi
 """
                 ota_script_b64 = base64.b64encode(ota_script.encode('utf-8')).decode('utf-8')
                 
-                # 安全解包并执行
                 if shutil.which("systemd-run"):
                     full_cmd = f"systemd-run --quiet --no-block bash -c \"echo '{ota_script_b64}' | base64 -d | bash\""
                 else:
                     full_cmd = f"nohup bash -c \"echo '{ota_script_b64}' | base64 -d | bash\" >/dev/null 2>&1 &"
                     
-                # 彻底统一为 os.system，消灭最后一个可能游离的 Popen 僵尸进程
                 os.system(full_cmd)
                 
             except Exception as e:
@@ -472,12 +466,13 @@ fi
         pass
 
 import socket
-# ================== [v3.0.3 变更: 引入多线程模型抵抗 Slowloris 攻击] ==================
+# ----------------------------------------------------------
+# [核心架构] 多线程非阻塞 Socket 模型 (抵抗 Slowloris 及阻塞攻击)
+# ----------------------------------------------------------
 class ThreadedServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    allow_reuse_address = True # 开启端口复用，防止热重启时端口冲突
+    allow_reuse_address = True
 
-# [终极修复 Issue #53] 废除极易引发 LXC 容器 "IPv4 耳聋" 的模糊双栈监听
-# 改为精准探底：直接读取配置文件中的公网 IP 类型，动态决定单一监听协议
+# 精准探底协议栈：根据配置的 IP 类型动态执行 AF_INET/AF_INET6 单轨监听
 bind_addr = "0.0.0.0"
 ThreadedServer.address_family = socket.AF_INET
 
@@ -487,7 +482,6 @@ if os.path.exists(config_path):
         for line in f:
             if line.startswith('PUBLIC_IP='):
                 pub_ip = line.split('=', 1)[1].strip('"\'')
-                # 如果注册的是 IPv6 节点，则精准监听 IPv6，否则一律兜底监听 IPv4
                 if ':' in pub_ip:
                     bind_addr = "::"
                     ThreadedServer.address_family = socket.AF_INET6
@@ -495,12 +489,13 @@ if os.path.exists(config_path):
 
 httpd = ThreadedServer((bind_addr, PORT), AgentHandler)
 
-# ================== [v3.6.3 核心: 挂载 TLS 加密隧道 (强制装甲版)] ==================
+# ----------------------------------------------------------
+# [加密通信] 强制全网挂载 TLS 加密隧道上下文
+# ----------------------------------------------------------
 import ssl
 cert_path = '/opt/ip_sentinel/core/cert.pem'
 key_path = '/opt/ip_sentinel/core/key.pem'
 
-# 全网强制启用 TLS 装甲，彻底消灭 HTTP 裸奔漏洞
 if os.path.exists(cert_path) and os.path.exists(key_path):
     try:
         context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
@@ -508,15 +503,12 @@ if os.path.exists(cert_path) and os.path.exists(key_path):
         httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
     except Exception as e:
         print(f"SSL 隧道构建失败，退化为 HTTP: {e}")
-# ======================================================================================
 
 try:
     httpd.serve_forever()
 except Exception as e:
     sys.exit(1)
-# ====================================================================================
 EOF
 
-# --- [重点升级 3: 移交系统级守护进程接管 (阻塞模式)] ---
 echo "🚀 [Agent] 正在启动 Webhook 监听服务 (端口: $AGENT_PORT)..."
 exec python3 "${INSTALL_DIR}/core/webhook.py" "$AGENT_PORT"

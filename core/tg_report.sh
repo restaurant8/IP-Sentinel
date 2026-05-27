@@ -1,15 +1,15 @@
 #!/bin/bash
 
 # ==========================================================
-# 脚本名称: tg_report.sh (Telegram 每日战报模块 - 动态锚点版)
-# 核心功能: 适配 Feature Flag 架构，按需展示独立统计数据，OTA 更新预警
+# 脚本名称: tg_report.sh
+# 核心功能: 收集并聚合终端特征、提取执行快照、侦测云端版本并生成简报
 # ==========================================================
 
 INSTALL_DIR="/opt/ip_sentinel"
 CONFIG_FILE="${INSTALL_DIR}/config.conf"
 LOG_FILE="${INSTALL_DIR}/logs/sentinel.log"
 
-# 1. 加载配置并自检
+# --- [基础自检] ---
 if [ ! -f "$CONFIG_FILE" ]; then exit 1; fi
 source "$CONFIG_FILE"
 
@@ -18,12 +18,14 @@ if [ -z "$TG_TOKEN" ] || [ -z "$CHAT_ID" ]; then
     exit 0
 fi
 
-# ================== [v4.0.8 核心: 防并发风暴与 60 秒冷却机制] ==================
+# ==========================================================
+# [防线 1] 并发风暴熔断机制 (60s 冷却池)
+# ==========================================================
 LOCK_FILE="${INSTALL_DIR}/core/.report_lock"
 if [ -f "$LOCK_FILE" ]; then
     LAST_RUN=$(cat "$LOCK_FILE" 2>/dev/null)
     NOW=$(date +%s)
-    # 校验 LAST_RUN 是否为有效数字，并比对 60 秒冷却期
+    # 严格校验最后执行时间的合法性，防御密集回调
     if [[ "$LAST_RUN" =~ ^[0-9]+$ ]]; then
         if [ $((NOW - LAST_RUN)) -lt 60 ]; then
             echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] [v${AGENT_VERSION:-未知}] [WARN ] [Report ] [SYSTEM] ⚠️ 战报请求过于频繁，触发 60 秒防并发风暴拦截。" >> "${INSTALL_DIR}/logs/sentinel.log"
@@ -32,22 +34,23 @@ if [ -f "$LOCK_FILE" ]; then
     fi
 fi
 echo $(date +%s) > "$LOCK_FILE"
-# ==============================================================================
 
-# 2. 节点元数据抓取 (v3.2.2 协议自适应与多级容灾版)
-# [v3.5.2 核心: 引入双轨身份架构]
+# ==========================================================
+# 1. 节点元数据与双轨身份解析
+# ==========================================================
 if [ -z "$NODE_NAME" ]; then
     IP_HASH=$(echo "${PUBLIC_IP:-127.0.0.1}" | md5sum | cut -c 1-4 | tr 'a-z' 'A-Z')
     NODE_NAME="$(hostname | cut -c 1-10)-${IP_HASH}"
 fi
 NODE_ALIAS="${NODE_ALIAS:-$NODE_NAME}"
 
-# --- [防线 1: 底层路由锁定与协议自适应] ---
+# ----------------------------------------------------------
+# [容灾探针 1] 底层路由锁定与多节点出口 IP 嗅探
+# ----------------------------------------------------------
 CURL_BIND_OPT=""
 DYNAMIC_IP_PREF="-${IP_PREF:-4}"
 
 if [[ -n "$BIND_IP" && "$BIND_IP" =~ ^[0-9a-fA-F:\.]+$ ]]; then
-    # [v3.6.3 容错层补丁] 探测物理网卡/虚拟 IP 存活状态
     RAW_BIND_IP=$(echo "$BIND_IP" | tr -d '[]')
     if ! ip addr show 2>/dev/null | grep -qw "$RAW_BIND_IP"; then
         CURL_BIND_OPT=""
@@ -61,37 +64,36 @@ if [[ -n "$BIND_IP" && "$BIND_IP" =~ ^[0-9a-fA-F:\.]+$ ]]; then
     fi
 fi
 
-# 多节点容灾探测出口 IP (注入协议自适应)
+# 结合协议自适应进行外部 IP 回显探测
 CURRENT_IP=$( (curl $CURL_BIND_OPT $DYNAMIC_IP_PREF -s -m 5 api.ip.sb/ip || curl $CURL_BIND_OPT $DYNAMIC_IP_PREF -s -m 5 ifconfig.me) 2>/dev/null | tr -d '[:space:]' )
-# [v3.3.1 修改] 强制兜底：如果外部 API 挂了，优先使用固化的对外公网面孔 (兼容 NAT 机的空 BIND_IP)
+# 强制兜底逻辑：网络完全阻断时回退使用配置文件锚点
 [ -z "$CURRENT_IP" ] && CURRENT_IP="${PUBLIC_IP:-$BIND_IP}"
 
-# 为可能获取到的 IPv6 自动添加方括号护甲
+# 为 IPv6 环境追加方括号安全护甲
 [[ "$CURRENT_IP" == *":"* ]] && [[ "$CURRENT_IP" != *"["* ]] && CURRENT_IP="[${CURRENT_IP}]"
 
-# --- [防线 2: 多级 ISP 容灾探针链路] ---
+# ----------------------------------------------------------
+# [容灾探针 2] 多级 ISP 情报探测链路
+# ----------------------------------------------------------
 ISP_INFO=""
 
-# 探针 A: 纯文本 API (免 jq，极速稳定)
+# 优先级 A: 高吞吐极速纯文本接口
 ISP_INFO=$(curl $CURL_BIND_OPT $DYNAMIC_IP_PREF -s -m 5 ipinfo.io/org 2>/dev/null)
 
-# 探针 B: 备用纯文本 API
+# 优先级 B: 备用纯文本接口
 if [ -z "$ISP_INFO" ] || [[ "$ISP_INFO" == *"error"* ]]; then
     ISP_INFO=$(curl $CURL_BIND_OPT $DYNAMIC_IP_PREF -s -m 5 ip-api.com/line/?fields=isp 2>/dev/null)
 fi
 
-# 探针 C: 原版的 JSON API (需要 jq 兜底)
+# 优先级 C: 需构建环境依赖的 JSON 接口
 if [ -z "$ISP_INFO" ] || [[ "$ISP_INFO" == *"error"* ]]; then
     if command -v jq &> /dev/null; then
         ISP_INFO=$(curl $CURL_BIND_OPT $DYNAMIC_IP_PREF -s -m 5 api.ip.sb/geoip | jq -r '.organization' 2>/dev/null)
     fi
 fi
 
-# --- [防线 3: 数据清洗 (遵循底层共识原则)] ---
-# 剔除 ipinfo 返回的开头 AS 号 (例如 "AS137535 JT TELECOM" -> "JT TELECOM")
+# 数据清洗过滤与类型渲染
 ISP_INFO=$(echo "$ISP_INFO" | sed -E 's/^AS[0-9]+ //')
-
-# 最终兜底判断
 [ -z "$ISP_INFO" ] || [ "$ISP_INFO" == "null" ] && ISP_INFO="未知 ISP"
 
 if [[ "$ISP_INFO" == *"Cloudflare"* ]]; then
@@ -100,8 +102,8 @@ else
     IP_TYPE="$ISP_INFO 🏠"
 fi
 
-# 动态国旗 (与中枢全视界雷达对齐)
-BASE_CC="${REGION_CODE%%-*}" # 兼容提取带有横杠的区域 (如 US-CA 提取为 US)
+# [全视界旗帜引擎] 动态国旗渲染装配
+BASE_CC="${REGION_CODE%%-*}"
 case "$BASE_CC" in
     US) FLAG="🇺🇸" ;; JP) FLAG="🇯🇵" ;; HK) FLAG="🇭🇰" ;; TW) FLAG="🇹🇼" ;; SG) FLAG="🇸🇬" ;;
     UK|GB) FLAG="🇬🇧" ;; DE) FLAG="🇩🇪" ;; FR) FLAG="🇫🇷" ;; NL) FLAG="🇳🇱" ;; CA) FLAG="🇨🇦" ;;
@@ -113,13 +115,14 @@ case "$BASE_CC" in
     NZ) FLAG="🇳🇿" ;; AR) FLAG="🇦🇷" ;; CL) FLAG="🇨🇱" ;; MX) FLAG="🇲🇽" ;; IL) FLAG="🇮🇱" ;;
     SA) FLAG="🇸🇦" ;; EG) FLAG="🇪🇬" ;; NG) FLAG="🇳🇬" ;; KE) FLAG="🇰🇪" ;; RO) FLAG="🇷🇴" ;;
     BG) FLAG="🇧🇬" ;; CZ) FLAG="🇨🇿" ;; HU) FLAG="🇭🇺" ;; GR) FLAG="🇬🇷" ;; UA) FLAG="🇺🇦" ;;
-    # === 补齐近期扩军的新增战区旗帜 ===
     MO) FLAG="🇲🇴" ;; KH) FLAG="🇰🇭" ;; MM) FLAG="🇲🇲" ;; LA) FLAG="🇱🇦" ;;
     MN) FLAG="🇲🇳" ;; NP) FLAG="🇳🇵" ;; BD) FLAG="🇧🇩" ;;
     *) FLAG="🌐" ;;
 esac
 
-# 3. 截取过去 24 小时的日志 (每天72次轮询，保留最新 1000 行足以覆盖单日战报)
+# ==========================================================
+# 2. 行为日志萃取与快照分析
+# ==========================================================
 LOG_CONTENT=$(tail -n 1000 "$LOG_FILE" 2>/dev/null)
 
 if [ -z "$LOG_CONTENT" ]; then
@@ -131,24 +134,19 @@ if [ -z "$LOG_CONTENT" ]; then
 🛠️ **建议**: 节点可能刚部署完毕，请在面板手动执行一次养护动作。
 EOT
 else
-    # ==========================================
-    # 4. 动态模块数据分析 (核心升级)
-    # ==========================================
-    
-    # 提取最近一次运行的快照 (智能识别所属模块)
+    # 抓取末次执行模块的运行态势图
     LAST_LOG_LINE=$(echo "$LOG_CONTENT" | grep "\[SCORE\]" | tail -n 1)
     LAST_TIME=$(echo "$LAST_LOG_LINE" | awk '{print $1,$2}' | tr -d '[]')
     LAST_MOD=$(echo "$LAST_LOG_LINE" | awk '{print $4}' | tr -d '[]')
     LAST_SCORE=$(echo "$LAST_LOG_LINE" | awk -F'自检结论: ' '{print $2}')
 
-    # 开始组装战报头部
     MSG="📊 **IP-Sentinel 每日简报 (${FLAG} ${REGION_NAME})**
 ----------------------------
 📍 **节点名称**: \`${NODE_ALIAS}\`
 📡 **出口 IP**: \`${CURRENT_IP}\`
 🛡️ **IP 属性**: ${IP_TYPE}"
 
-    # --- [分析块 1: Google 纠偏模块] ---
+    # 统计 Google 纠偏阵列数据
     if [ "$ENABLE_GOOGLE" == "true" ]; then
         GOOGLE_LOGS=$(echo "$LOG_CONTENT" | grep "\[Google")
         G_TOTAL=$(echo "$GOOGLE_LOGS" | grep "\[START\]" -c)
@@ -166,7 +164,7 @@ else
 ✅ 成功: ${G_SUCCESS} | ❌ 送中: ${G_FAILED} | ⚠️ 警告: ${G_WARN}"
     fi
 
-    # --- [分析块 2: IP 信用净化模块] ---
+    # 统计 Trust 净化阵列数据
     if [ "$ENABLE_TRUST" == "true" ]; then
         TRUST_LOGS=$(echo "$LOG_CONTENT" | grep "\[Trust")
         T_TOTAL=$(echo "$TRUST_LOGS" | grep "\[START\]" -c)
@@ -183,7 +181,7 @@ else
 ✅ 成功注入: ${T_SUCCESS} | ❌ 访问受阻: ${T_FAILED}"
     fi
 
-    # 组装战报尾部 (最近快照)
+    # 追加末次快照
     MSG="$MSG
 
 🕒 **最近执行快照:  \`${LAST_MOD:-"System"} \`**
@@ -192,48 +190,42 @@ else
 
 fi
 
-# ==========================================
-# 5. [核心: OTA 云端版本探针与告警模块]
-# ==========================================
-# 从配置文件提取当前本地版本，若无则默认为未知
+# ==========================================================
+# 3. 云端版本探针与 OTA 调度模块
+# ==========================================================
 LOCAL_VER="${AGENT_VERSION:-未知}"
-# [时区对齐] 强制获取当前绝对 UTC 时间，作为全局统一的战报落款
+# [时间线对齐] 强制采用绝对 UTC 时间消除多节点的系统偏差
 REPORT_UTC_TIME=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
 
-# 极轻量级探针: 抓取 GitHub 云端的 version.txt (超时 3 秒，KV解析法)
 REPO_RAW_URL="https://raw.githubusercontent.com/hotyue/IP-Sentinel/main"
 REMOTE_VER=$(curl -s -m 3 "${REPO_RAW_URL}/version.txt" | grep "^AGENT_VERSION=" | cut -d'=' -f2 | tr -d '[:space:]')
 
-# 构建底部引擎状态块的基础信息
 MSG="$MSG
 ----------------------------
 🛡️ **系统引擎状态**
 ⏱️ 战报生成: \`${REPORT_UTC_TIME}\`"
 
-# 比准逻辑：根据是否为最新版本，动态决定占用的行数
+# 根据云端版本一致性自动渲染更新提示面板
 if [ -n "$REMOTE_VER" ]; then
     if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
-        # [需要升级] 换行显示旧版本与新版本提示
         MSG="$MSG
 当前运行版本: \`v${LOCAL_VER}\`
 ✨ **发现新版本**: \`v${REMOTE_VER}\` (建议更新)
 💡 *系统提示：检测到新版引擎，建议通过中枢控制台执行 OTA 热更新！*"
     else
-        # [已是最新] 不换行，直接在尾部追加绿勾
         MSG="$MSG
 当前运行版本: \`v${LOCAL_VER}\` (✅已是最新)
 💡 *IP-Sentinel 持续为您守护节点。*
 *若本项目对您有帮助，欢迎前往 GitHub 赐予 🌟*"
     fi
 else
-    # [抓取失败兜底]
     MSG="$MSG
 当前运行版本: \`v${LOCAL_VER}\`
 💡 *IP-Sentinel 持续为您守护节点。*
 *若本项目对您有帮助，欢迎前往 GitHub 赐予 🌟*"
 fi
 
-# 5. 调用 API 推送 (接入安全网关，挂载交互式控制台按钮)
+# --- [下发 API 载荷] ---
 JSON_PAYLOAD=$(jq -n \
   --arg cid "$CHAT_ID" \
   --arg txt "$MSG" \
