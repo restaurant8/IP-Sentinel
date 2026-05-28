@@ -106,7 +106,7 @@ TOTAL_ACTIONS=$((5 + RANDOM % 4))
 
 log "$MODULE_NAME" "INFO " "当前出网 IP: $CURRENT_IP"
 log "$MODULE_NAME" "INFO " "设备指纹锁定: ${SESSION_UA:0:45}..."
-log "$MODULE_NAME" "INFO " "平台推断: [$UA_PLATFORM] | 虚拟驻留坐标: $SESSION_BASE_LAT, $SESSION_BASE_LON"
+log "$MODULE_NAME" "INFO " "平台推断: [$UA_PLATFORM] "
 log "$MODULE_NAME" "INFO " "虚拟驻留坐标: $SESSION_BASE_LAT, $SESSION_BASE_LON"
 
 # -----------------------------------------------------------
@@ -141,7 +141,8 @@ DYNAMIC_IP_PREF="-${IP_PREF:-4}"
 if [[ -n "$BIND_IP" && "$BIND_IP" =~ ^[0-9a-fA-F:\.]+$ ]]; then
     # [防线校验] 探测物理网卡存活状态，防 IP 漂移引发通信雪崩
     RAW_BIND_IP=$(echo "$BIND_IP" | tr -d '[]')
-    if ! ip addr show 2>/dev/null | grep -qw "$RAW_BIND_IP"; then
+    # [v4.1.5 修复] 使用 -Fq 替代 -qw，防止 IPv6 冒号被误认为单词边界导致网卡死锁失效
+    if ! ip addr show 2>/dev/null | grep -Fq "$RAW_BIND_IP"; then
         log "$MODULE_NAME" "WARN " "检测到配置的出口 IP ($RAW_BIND_IP) 已丢失，自动降级为系统默认路由出网！"
         CURL_BIND_OPT=""
     else
@@ -155,6 +156,13 @@ if [[ -n "$BIND_IP" && "$BIND_IP" =~ ^[0-9a-fA-F:\.]+$ ]]; then
         fi
     fi
 fi
+
+# [v4.1.5 修复] 业务域 Referer 隔离池初始化
+# 防止出现从 Apple 探针直接跳转到 Google Maps 的反人类机器行为
+REF_SEARCH=""
+REF_NEWS=""
+REF_MAPS=""
+REF_ECO=""
 
 # --- [会话漫游模拟] ---
 for ((i=1; i<=TOTAL_ACTIONS; i++)); do
@@ -221,9 +229,23 @@ for ((i=1; i<=TOTAL_ACTIONS; i++)); do
         fi
     fi
     
-    # [v4.1.3 修复] 统一执行 curl，并精准捕获底层网络错误码
-    CODE=$(curl $CURL_BIND_OPT $DYNAMIC_IP_PREF -m 15 -s -L -o /dev/null -w "%{http_code}" \
-         -b "$COOKIE_FILE" -c "$COOKIE_FILE" -A "$SESSION_UA" "$TARGET_URL")
+    # [v4.1.5 修复] 匹配当前业务对应的 Referer 来源
+    CTX_REF=""
+    case "$ACTION_LOG" in
+        "Search "*) CTX_REF="$REF_SEARCH" ;;
+        "News   "*) CTX_REF="$REF_NEWS" ;;
+        "Maps   "*) CTX_REF="$REF_MAPS" ;;
+        "EcoRoam"*) CTX_REF="$REF_ECO" ;;
+    esac
+
+    # [v4.1.3 & v4.1.5 修复] 统一执行 curl，70% 概率携带同业务域 Referer
+    if [ -n "$CTX_REF" ] && [ $((RANDOM % 100)) -lt 70 ]; then
+        CODE=$(curl $CURL_BIND_OPT $DYNAMIC_IP_PREF -m 15 -s -L -o /dev/null -w "%{http_code}" \
+             -b "$COOKIE_FILE" -c "$COOKIE_FILE" -A "$SESSION_UA" -H "Referer: $CTX_REF" "$TARGET_URL")
+    else
+        CODE=$(curl $CURL_BIND_OPT $DYNAMIC_IP_PREF -m 15 -s -L -o /dev/null -w "%{http_code}" \
+             -b "$COOKIE_FILE" -c "$COOKIE_FILE" -A "$SESSION_UA" "$TARGET_URL")
+    fi
     CURL_EXIT=$?
     
     # 错误码精准映射（不破坏原有的 SCORE 送中判定，只让动作日志更清晰）
@@ -237,8 +259,26 @@ for ((i=1; i<=TOTAL_ACTIONS; i++)); do
             *)  CODE="ERR_${CURL_EXIT}" ;;
         esac
         log "$MODULE_NAME" "WARN " "动作[$i/$TOTAL_ACTIONS]异常 | 底层错误: $CODE | 抖动坐标: $ACTION_LAT, $ACTION_LON"
+        
+        # [v4.1.5] 请求失败，清空当前业务链的 Referer
+        case "$ACTION_LOG" in
+            "Search "*) REF_SEARCH="" ;;
+            "News   "*) REF_NEWS="" ;;
+            "Maps   "*) REF_MAPS="" ;;
+            "EcoRoam"*) REF_ECO="" ;;
+        esac
     else
         log "$MODULE_NAME" "EXEC " "动作[$i/$TOTAL_ACTIONS]完成 | HTTP状态: $CODE | 抖动坐标: $ACTION_LAT, $ACTION_LON"
+        
+        # [v4.1.5] 请求成功，记录当前 URL 作为同业务下一次跳转的 Referer (2xx 或 3xx 视为有效)
+        if [[ "$CODE" =~ ^[23] ]]; then
+            case "$ACTION_LOG" in
+                "Search "*) REF_SEARCH="$TARGET_URL" ;;
+                "News   "*) REF_NEWS="$TARGET_URL" ;;
+                "Maps   "*) REF_MAPS="$TARGET_URL" ;;
+                "EcoRoam"*) REF_ECO="$TARGET_URL" ;;
+            esac
+        fi
     fi
     
     # 【核心升级】行为拉伸：每次动作后强制休眠 90 - 120 秒
