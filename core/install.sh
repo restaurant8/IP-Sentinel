@@ -411,28 +411,34 @@ if [ "$UPGRADE_MODE" == "false" ]; then
     fi
 
     # ----------------------------------------------------------
-    # [网络锚定] 冗余网络栈探测与多出口智能嗅探
+    # [网络锚定] 冗余网络栈探测与多出口智能嗅探 (v4.2.0 完全体)
     # ----------------------------------------------------------
     echo -e "\n\033[36m[4.5/7] 正在探测本机网络栈与可用出口 (多节点雷达扫描中)...\033[0m"
 
     RAW_DETECT_V4=$( (curl -4 -s -m 3 api.ip.sb/ip || curl -4 -s -m 3 ifconfig.me || curl -4 -s -m 3 ipv4.icanhazip.com) 2>/dev/null | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+" | head -n 1 | tr -d '[:space:]')
     RAW_DETECT_V6=$( (curl -6 -s -m 3 api.ip.sb/ip || curl -6 -s -m 3 ifconfig.me || curl -6 -s -m 3 ipv6.icanhazip.com) 2>/dev/null | grep -E "^[0-9a-fA-F:]+.*:" | head -n 1 | tr -d '[:space:]')
 
-    # [v4.2.1 源头防线] 剔除 WARP 伪装 IP (如 104.28.x.x) 及各类云服务商大内网/CGNAT 保留段
-    # 防止纯 v6 机器开启 WARP v4 后，错误将代理 IP 当作入站网卡，导致双轨架构及端口监听彻底崩溃
+    # 引入工业级控制面网卡设备检测，双重过滤 WARP/TUN/桥接等假公网环境
     DETECT_V4=""
-    if [[ -n "$RAW_DETECT_V4" ]] && \
-       ! [[ "$RAW_DETECT_V4" =~ ^104\.28\. ]] && \
-       ! [[ "$RAW_DETECT_V4" =~ ^10\.|^192\.168\.|^172\.(1[6-9]|2[0-9]|3[0-1])\.|^100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\. ]]; then
-        DETECT_V4="$RAW_DETECT_V4"
-    elif [[ -n "$RAW_DETECT_V4" ]]; then
-        echo -e " \033[33m⚠️ 雷达警告: 发现异常 IPv4 出口 ($RAW_DETECT_V4)，疑似 WARP/NAT 代理，已从通讯候选池中隔离。\033[0m"
+    if [[ -n "$RAW_DETECT_V4" ]]; then
+        V4_DEV=$(ip route get 8.8.8.8 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}' | head -n 1)
+        if [[ "$V4_DEV" =~ ^(warp|wgcf|tun|tap|docker|br-|lo) ]] || \
+           [[ "$RAW_DETECT_V4" =~ ^104\.28\. ]] || \
+           [[ "$RAW_DETECT_V4" =~ ^10\.|^192\.168\.|^172\.(1[6-9]|2[0-9]|3[0-1])\.|^100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\. ]]; then
+            echo -e " \033[33m⚠️ 雷达警告: 发现异常 IPv4 出口 ($RAW_DETECT_V4) 经由虚拟网卡 ($V4_DEV)，已从通讯候选池中安全隔离。\033[0m"
+        else
+            DETECT_V4="$RAW_DETECT_V4"
+        fi
     fi
 
-    # [容灾] v6 也做最基础的本地链路段拦截 (极少发生，兜底防御)
     DETECT_V6=""
-    if [[ -n "$RAW_DETECT_V6" ]] && ! [[ "$RAW_DETECT_V6" =~ ^fe80:|^::1 ]]; then
-        DETECT_V6="$RAW_DETECT_V6"
+    if [[ -n "$RAW_DETECT_V6" ]]; then
+        V6_DEV=$(ip -6 route get 2001:4860:4860::8888 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}' | head -n 1)
+        if [[ "$V6_DEV" =~ ^(warp|wgcf|tun|tap|docker|br-|lo) ]] || [[ "$RAW_DETECT_V6" =~ ^fe80:|^::1 ]]; then
+            echo -e " \033[33m⚠️ 雷达警告: 发现异常 IPv6 出口 ($RAW_DETECT_V6) 经由虚拟网卡 ($V6_DEV)，已从通讯候选池中安全隔离。\033[0m"
+        else
+            DETECT_V6="$RAW_DETECT_V6"
+        fi
     fi
 
     IP_OPTIONS=()
@@ -487,10 +493,7 @@ if [ "$UPGRADE_MODE" == "false" ]; then
         echo -e "\n\033[36m[4.6/7] 正在构建双轨通讯分离架构 (Control Plane Separation)...\033[0m"
         echo -e " \033[33m⚠️ 检测到养护锚点为 IPv6，正在嗅探本机 IPv4 以构建防 MTU 黑洞通讯专线...\033[0m"
         
-        # [终极防线] 拦截 WARP IP (如 104.28.x.x) 及各类云服务商大内网/CGNAT 保留段
-        if [[ -n "$DETECT_V4" ]] && \
-           ! [[ "$DETECT_V4" =~ ^104\.28\. ]] && \
-           ! [[ "$DETECT_V4" =~ ^10\.|^192\.168\.|^172\.(1[6-9]|2[0-9]|3[0-1])\.|^100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\. ]]; then
+        if [[ -n "$DETECT_V4" ]]; then
             COMM_IP="$DETECT_V4"
             echo -e " \033[32m✅ 成功建立双轨架构: 养护数据流走 IPv6 ($PUBLIC_IP)，中枢控制流走 IPv4 ($COMM_IP)\033[0m"
         else
@@ -626,23 +629,23 @@ if [ "$UPGRADE_MODE" == "true" ]; then
         SAFE_PUBLIC_IP="${PUBLIC_IP}"
     fi
 
-    # [v4.2.0 热修复] 为老版本司令部平滑补齐双轨通讯 IP (含严格入站存活校验)
+    # [v4.2.0 热修复] 为老版本司令部平滑补齐双轨通讯 IP (含设备路由与入站存活校验)
     if ! grep -q "^COMM_IP=" "$CONFIG_FILE"; then
         echo -e "\n🔄 [平滑迁移] 正在为老节点无损注入 v4.2.0 双轨通讯架构..."
         TMP_PUB_IP=$(grep "^PUBLIC_IP=" "$CONFIG_FILE" | cut -d'"' -f2 | tr -d '[]')
         
         if [[ "$TMP_PUB_IP" == *":"* ]]; then
-            TMP_V4=$(curl -4 -s -m 3 api.ip.sb/ip 2>/dev/null | tr -d '[:space:]')
+            TMP_V4=$(curl -4 -s -m 3 api.ip.sb/ip 2>/dev/null | tr -d '[:space:]' )
+            V4_MIG_DEV=$(ip route get 8.8.8.8 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}' | head -n 1)
             
-            # [终极防线] 拦截 WARP IP (如 104.28.x.x 等 Cloudflare 段) 及各类内网 NAT 段
-            # 注: api.ip.sb 返回的一般是出网公网 IP，极少是 10./192. 但为防万一全面封锁
             if [[ -n "$TMP_V4" ]] && \
+               ! [[ "$V4_MIG_DEV" =~ ^(warp|wgcf|tun|tap|docker|br-|lo) ]] && \
                ! [[ "$TMP_V4" =~ ^104\.28\. ]] && \
                ! [[ "$TMP_V4" =~ ^10\.|^192\.168\.|^172\.(1[6-9]|2[0-9]|3[0-1])\.|^100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\. ]]; then
                 NEW_COMM_IP="$TMP_V4"
                 echo -e " \033[32m✅ 成功建立双轨架构: 养护走 IPv6，中枢控制走 IPv4 ($NEW_COMM_IP)\033[0m"
             else
-                echo -e " \033[33m⚠️ 嗅探到的备用 IPv4 疑似为内网 NAT 或 WARP 伪装 IP，存在无法入站的风险，已安全退回纯 IPv6 单轨模式。\033[0m"
+                echo -e " \033[33m⚠️ 嗅探到的备用 IPv4 疑似为内网 NAT 或 WARP 伪装 IP，已安全退回纯 IPv6 单轨模式。\033[0m"
                 NEW_COMM_IP="[$TMP_PUB_IP]"
             fi
         else
