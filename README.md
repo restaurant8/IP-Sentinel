@@ -64,13 +64,13 @@
 ```bash
 git clone <your-reviewed-fork> IP-Sentinel
 cd IP-Sentinel
-sudo bash master/install_master.sh
+bash master/install_master.sh
 ```
 - 部署 Agent (边缘哨兵)：在需要养护的机器上执行 Agent 脚本，安装时选择私有独立中枢，并分别输入您自建机器人的 [Token](https://blog.iot-architect.com/engineering-practice/create-private-telegram-bot-via-botfather) 以及您的个人 [Chat ID](https://blog.iot-architect.com/engineering-practice/get-telegram-personal-id-via-userinfobot) ：
 - [官方部署教程](https://blog.iot-architect.com/engineering-practice/ip-sentinel-installation-and-upgrade-guide/)
 ```Bash
 cd IP-Sentinel
-sudo bash core/install.sh
+bash core/install.sh
 ```
 - Agent 一键非交互部署请看 [AGENT_ONECLICK.md](./AGENT_ONECLICK.md)。
 - 激活节点：安装完成后，您的手机会收到一条 #REGISTER# 注册暗号，将其转发给您自己的机器人即可完成编队入库。
@@ -102,7 +102,7 @@ bash /opt/ip_sentinel/core/uninstall.sh
 
 ```bash
 git checkout legacy
-sudo bash core/install.sh
+bash core/install.sh
 ```
 
 ## 📡 战术联络 (Community)

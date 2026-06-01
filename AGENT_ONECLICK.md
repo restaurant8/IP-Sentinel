@@ -3,7 +3,7 @@
 The hardened Agent installer supports a non-interactive mode:
 
 ```bash
-sudo env \
+env \
   IPS_TG_TOKEN='123456:YOUR_BOT_TOKEN' \
   IPS_CHAT_ID='123456789' \
   IPS_REGION='auto' \
@@ -40,7 +40,7 @@ Optional variables:
 - `IPS_IP_VERSION`: set to `6` to prefer IPv6 when available. Defaults to IPv4.
 - `IPS_OPEN_FIREWALL`: set to `true` to attempt local firewall opening.
 
-Auto mode uses `api.ip.sb/geoip` to detect the public IP country, then selects the matching country in `data/map.json`. If city/state matching is unavailable, it falls back to the first configured city for that country. Use a manual `IPS_REGION` when you need an exact city.
+Auto mode uses public HTTPS geo-IP endpoints to detect the public IP country, then selects the matching country in `data/map.json`. If city/state matching is unavailable, it falls back to the first configured city for that country. Use a manual `IPS_REGION` when you need an exact city or when the server cannot reach the detection endpoints.
 
 Common region examples:
 
@@ -53,3 +53,7 @@ HK/Default/HongKong
 ```
 
 After installation, open the selected TCP port in the cloud provider security group and forward the `#REGISTER#...` message to your private Master bot.
+
+## Package Manager Notes
+
+The installer must run as `root`, but the commands do not use `sudo`. If `apt` reports dependency conflicts such as mixed `perl` and `perl-base` versions, fix the OS package sources first or reinstall the node with a clean Debian 11/12 or Ubuntu 22.04/24.04 image. This usually means the VPS image has mixed Debian release repositories, not that IP-Sentinel failed.

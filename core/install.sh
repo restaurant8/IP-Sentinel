@@ -10,7 +10,7 @@
 # ==========================================================
 if [ "$EUID" -ne 0 ]; then
   echo -e "\033[31m❌ 权限被拒绝: 部署 IP-Sentinel 需要最高系统权限。\033[0m"
-  echo -e "💡 请切换到 root 用户 (执行 su root 或 sudo -i) 后重新运行指令。"
+  echo -e "💡 请切换到 root 用户 (执行 su root) 后重新运行指令。"
   exit 1
 fi
 
@@ -304,10 +304,23 @@ if [ "$UPGRADE_MODE" == "false" ]; then
         IPS_REGION_MODE=$(echo "$IPS_REGION" | tr 'A-Z' 'a-z')
 
         if [ -z "$IPS_REGION" ] || [ "$IPS_REGION_MODE" == "auto" ]; then
-            GEO_JSON=$(curl -${IPS_IP_VERSION:-4} -s -m 5 api.ip.sb/geoip 2>/dev/null || curl -s -m 5 api.ip.sb/geoip 2>/dev/null || true)
+            GEO_JSON=$(curl -${IPS_IP_VERSION:-4} -fsSL -m 5 https://api.ip.sb/geoip 2>/dev/null || curl -fsSL -m 5 https://api.ip.sb/geoip 2>/dev/null || true)
             AUTO_COUNTRY=$(echo "$GEO_JSON" | jq -r '.country_code // .countryCode // .country // empty' 2>/dev/null | tr 'a-z' 'A-Z' | tr -cd 'A-Z0-9')
             AUTO_STATE=$(echo "$GEO_JSON" | jq -r '.region_code // .regionCode // .region // empty' 2>/dev/null | sed 's/[ -]/_/g' | tr -cd 'a-zA-Z0-9_-')
             AUTO_CITY=$(echo "$GEO_JSON" | jq -r '.city // empty' 2>/dev/null | sed 's/[ -]/_/g' | tr -cd 'a-zA-Z0-9_-')
+
+            if [ -z "$AUTO_COUNTRY" ]; then
+                AUTO_COUNTRY=$( \
+                    curl -${IPS_IP_VERSION:-4} -fsSL -m 5 https://ipapi.co/country/ 2>/dev/null || \
+                    curl -fsSL -m 5 https://ipapi.co/country/ 2>/dev/null || \
+                    curl -${IPS_IP_VERSION:-4} -fsSL -m 5 https://ifconfig.co/country-iso 2>/dev/null || \
+                    curl -fsSL -m 5 https://ifconfig.co/country-iso 2>/dev/null || \
+                    curl -${IPS_IP_VERSION:-4} -fsSL -m 5 https://ipinfo.io/country 2>/dev/null || \
+                    curl -fsSL -m 5 https://ipinfo.io/country 2>/dev/null || \
+                    true \
+                )
+                AUTO_COUNTRY=$(echo "$AUTO_COUNTRY" | head -n 1 | tr 'a-z' 'A-Z' | tr -cd 'A-Z0-9')
+            fi
 
             if [ -z "$AUTO_COUNTRY" ]; then
                 echo -e "\033[31m⛔ [One-click] 无法通过公网 IP 自动判断国家，请手动设置 IPS_REGION。示例: US/CA/Los_Angeles\033[0m"

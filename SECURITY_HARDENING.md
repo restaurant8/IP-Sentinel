@@ -17,7 +17,7 @@ This fork changes the project to a safer default posture. It is not a guarantee 
 Do not run floating-branch installers such as:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hotyue/IP-Sentinel/main/core/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/hotyue/IP-Sentinel/main/core/install.sh | bash
 ```
 
 Instead, clone or fetch a reviewed commit, inspect the changes, then run the local script:
@@ -25,13 +25,13 @@ Instead, clone or fetch a reviewed commit, inspect the changes, then run the loc
 ```bash
 git clone <your-reviewed-fork> IP-Sentinel
 cd IP-Sentinel
-sudo bash core/install.sh
+bash core/install.sh
 ```
 
 For Master:
 
 ```bash
-sudo bash master/install_master.sh
+bash master/install_master.sh
 ```
 
 If you intentionally need remote fetches, pin `REPO_RAW_URL` to an audited commit or tag and set:
@@ -56,7 +56,7 @@ sha256sum /tmp/ipquality.sh
 Only after accepting that risk, install the reviewed local copy and enable the module:
 
 ```bash
-sudo install -m 700 /tmp/ipquality.sh /opt/ip_sentinel/core/ip_probe.sh
+install -m 700 /tmp/ipquality.sh /opt/ip_sentinel/core/ip_probe.sh
 ENABLE_THIRD_PARTY_PROBE="true"
 ```
 
