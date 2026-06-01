@@ -70,6 +70,8 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." 2>/dev/null && pwd)"
 [ -z "$REPO_ROOT" ] && REPO_ROOT="$SCRIPT_DIR"
 ALLOW_REMOTE_FETCH="${ALLOW_REMOTE_FETCH:-false}"
 ALLOW_FLOATING_REMOTE="${ALLOW_FLOATING_REMOTE:-false}"
+ONECLICK_AGENT="${ONECLICK_AGENT:-false}"
+[ "${1:-}" == "--agent-oneclick" ] && ONECLICK_AGENT="true"
 
 remote_fetch_allowed() {
     if [[ "$REPO_RAW_URL" =~ /(main|master)$ ]] && [ "$ALLOW_FLOATING_REMOTE" != "true" ]; then
@@ -205,6 +207,18 @@ fi
 if [ "$SILENT_OTA" == "true" ]; then
     echo -e "\n⛔ [安全熔断] 安全版已禁用 SILENT_OTA。请通过 SSH 手动运行安装脚本升级。"
     exit 1
+elif [ "$ONECLICK_AGENT" == "true" ]; then
+    ACTION_CHOICE=1
+    UPGRADE_MODE="false"
+    KEEP_LOGS="true"
+
+    if [ -f "$CONFIG_FILE" ]; then
+        UPGRADE_MODE="true"
+        source "$CONFIG_FILE"
+        echo -e "\n\033[32m✅ [One-click] 检测到既有哨兵配置，将按原配置平滑升级。\033[0m"
+    else
+        echo -e "\n\033[32m✅ [One-click] 已启用哨兵一键部署模式。\033[0m"
+    fi
 else
     echo -e "\n请选择操作:"
     echo "  1) 🚀 部署边缘节点 (进入全球节点配置)"
@@ -285,6 +299,34 @@ echo -e "\033[32m✅ 环境清理完毕，幽灵进程已肃清！\033[0m"
 # ==========================================================
 if [ "$UPGRADE_MODE" == "false" ]; then
 
+    if [ "$ONECLICK_AGENT" == "true" ]; then
+        if [ -z "${IPS_REGION:-}" ]; then
+            echo -e "\033[31m⛔ [One-click] 缺少 IPS_REGION。格式示例: US/CA/Los_Angeles 或 SG/Default/Singapore\033[0m"
+            exit 1
+        fi
+
+        IFS='/' read -r COUNTRY_ID STATE_ID CITY_ID <<< "$IPS_REGION"
+        COUNTRY_ID=$(echo "$COUNTRY_ID" | tr -cd 'a-zA-Z0-9')
+        STATE_ID=$(echo "${STATE_ID:-Default}" | tr -cd 'a-zA-Z0-9_-')
+        CITY_ID=$(echo "$CITY_ID" | tr -cd 'a-zA-Z0-9_-')
+
+        if [ -z "$COUNTRY_ID" ] || [ -z "$STATE_ID" ] || [ -z "$CITY_ID" ]; then
+            echo -e "\033[31m⛔ [One-click] IPS_REGION 格式无效。格式示例: US/CA/Los_Angeles\033[0m"
+            exit 1
+        fi
+
+        KEYWORD_FILE=$(jq -r --arg country "$COUNTRY_ID" '.continents[].countries[] | select(.id==$country) | .keyword_file // empty' "${SECURE_TMP}/map.json")
+        CITY_NAME=$(jq -r --arg country "$COUNTRY_ID" --arg state "$STATE_ID" --arg city "$CITY_ID" '.continents[].countries[] | select(.id==$country) | .states[] | select(.id==$state) | .cities[] | select(.id==$city) | .name // empty' "${SECURE_TMP}/map.json")
+
+        if [ -z "$KEYWORD_FILE" ] || [ -z "$CITY_NAME" ]; then
+            echo -e "\033[31m⛔ [One-click] 未在 data/map.json 中找到区域: ${COUNTRY_ID}/${STATE_ID}/${CITY_ID}\033[0m"
+            exit 1
+        fi
+
+        REGION_CODE="$COUNTRY_ID"
+        echo -e "\033[32m✅ [One-click] 区域锁定: ${COUNTRY_ID}/${STATE_ID}/${CITY_ID} (${CITY_NAME})\033[0m"
+    else
+
     echo -e "\n\033[36m📍 【第零级】请选择目标战区 (Continent):\033[0m"
     jq -r '.continents[] | "\(.id)|\(.name)"' "${SECURE_TMP}/map.json" > "${SECURE_TMP}/continents.txt"
     i=1; CONT_MAP=()
@@ -354,6 +396,8 @@ if [ "$UPGRADE_MODE" == "false" ]; then
         CITY_NAME="${CITY_NAME_MAP[$CI_SEL]}"
     fi
 
+    fi
+
     rm -f "${SECURE_TMP}/map.json" "${SECURE_TMP}/continents.txt" "${SECURE_TMP}/countries.txt" "${SECURE_TMP}/states.txt" "${SECURE_TMP}/cities.txt"
 
     mkdir -p "${INSTALL_DIR}/core"
@@ -365,8 +409,12 @@ if [ "$UPGRADE_MODE" == "false" ]; then
     ENABLE_GOOGLE="true"
     ENABLE_TRUST="true"
 
-    echo -e "\n[4/7] 是否接入 Master 司令部进行远程联控？ (y/n)"
-    read -p "请输入选择 [y/n] (默认n): " TG_CHOICE
+    if [ "$ONECLICK_AGENT" == "true" ]; then
+        TG_CHOICE="y"
+    else
+        echo -e "\n[4/7] 是否接入 Master 司令部进行远程联控？ (y/n)"
+        read -p "请输入选择 [y/n] (默认n): " TG_CHOICE
+    fi
     TG_TOKEN=""
     TG_API_URL=""
     CHAT_ID=""
@@ -382,8 +430,13 @@ if [ "$UPGRADE_MODE" == "false" ]; then
         echo -e "\n请选择中枢接入模式:"
         echo "  1) 🛡️ 私有独立中枢 (需提供自建 Bot Token，推荐，安全版禁用 OTA)"
         echo "  2) ☁️ 官方公共网关 (安全版已禁用)"
-        read -p "请输入选择 [1-2] (默认1): " MASTER_TYPE
-        MASTER_TYPE=${MASTER_TYPE:-1}
+        if [ "$ONECLICK_AGENT" == "true" ]; then
+            MASTER_TYPE=1
+            echo "  [One-click] 自动选择私有独立中枢"
+        else
+            read -p "请输入选择 [1-2] (默认1): " MASTER_TYPE
+            MASTER_TYPE=${MASTER_TYPE:-1}
+        fi
         
         if [ "$MASTER_TYPE" == "2" ]; then
             echo -e "\033[31m⛔ 安全版已禁用官方公共网关。请部署私有 Master 后重新运行安装。\033[0m"
@@ -391,8 +444,16 @@ if [ "$UPGRADE_MODE" == "false" ]; then
         else
             echo -e "\n\033[36m📘 私有 Bot 创建教程: \033[4m\033]8;;https://blog.iot-architect.com/engineering-practice/create-private-telegram-bot-via-botfather/\033\\👉 [点击此处直接在浏览器中打开]\033]8;;\033\\ 👈\033[0m"
             echo -e "\033[90m   (若您的终端较老不支持点击，请手动复制: https://blog.iot-architect.com/engineering-practice/create-private-telegram-bot-via-botfather/ )\033[0m"
-            read -p "请输入您的私有 Telegram Bot Token: " RAW_TOKEN
+            if [ "$ONECLICK_AGENT" == "true" ]; then
+                RAW_TOKEN="${IPS_TG_TOKEN:-}"
+            else
+                read -p "请输入您的私有 Telegram Bot Token: " RAW_TOKEN
+            fi
             USER_TOKEN=$(echo "$RAW_TOKEN" | tr -cd 'a-zA-Z0-9_:-')
+            if [ "$ONECLICK_AGENT" == "true" ] && [ -z "$USER_TOKEN" ]; then
+                echo -e "\033[31m⛔ [One-click] 缺少 IPS_TG_TOKEN。\033[0m"
+                exit 1
+            fi
             while [ -z "$USER_TOKEN" ]; do
                 read -p "⚠️ Token 不能为空或包含非法字符，请重新输入: " RAW_TOKEN
                 USER_TOKEN=$(echo "$RAW_TOKEN" | tr -cd 'a-zA-Z0-9_:-')
@@ -410,8 +471,16 @@ if [ "$UPGRADE_MODE" == "false" ]; then
         echo -e "\n\033[33m💡 提示：如果您不知道下方自己的 Chat ID 是什么，可以关注 @userinfobot 获取。\033[0m"
         echo -e "\033[36m📘 查看图文教程: \033[4m\033]8;;https://blog.iot-architect.com/engineering-practice/get-telegram-personal-id-via-userinfobot/\033\\👉 [点击此处直接在浏览器中打开]\033]8;;\033\\ 👈\033[0m"
         echo -e "\033[90m   (若您的终端较老不支持点击，请手动复制: https://blog.iot-architect.com/engineering-practice/get-telegram-personal-id-via-userinfobot/ )\033[0m"
-        read -p "请输入你的 Chat ID (必须准确，否则无法联控): " RAW_CHAT_ID
+        if [ "$ONECLICK_AGENT" == "true" ]; then
+            RAW_CHAT_ID="${IPS_CHAT_ID:-}"
+        else
+            read -p "请输入你的 Chat ID (必须准确，否则无法联控): " RAW_CHAT_ID
+        fi
         CHAT_ID=$(echo "$RAW_CHAT_ID" | tr -cd '0-9-')
+        if [ "$ONECLICK_AGENT" == "true" ] && [ -z "$CHAT_ID" ]; then
+            echo -e "\033[31m⛔ [One-click] 缺少 IPS_CHAT_ID。\033[0m"
+            exit 1
+        fi
         CONTROL_SECRET=$(openssl rand -hex 32 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(32))')
         if [ -z "$CONTROL_SECRET" ]; then
             echo -e "\033[31m⛔ 无法生成控制通道密钥，请确认 openssl 或 python3 可用。\033[0m"
@@ -432,25 +501,39 @@ if [ "$UPGRADE_MODE" == "false" ]; then
         echo -e "💡 系统为您生成的推荐随机高位端口为: \033[32m$RANDOM_PORT\033[0m"
         echo -e "\033[33m(该端口已通过本地占用校验，可直接使用)\033[0m"
         
-        while true; do
-            read -p "请输入 Webhook 监听端口 (回车采用推荐, 或手动输入): " INPUT_PORT
-            
-            if [ -z "$INPUT_PORT" ]; then
-                AGENT_PORT="$RANDOM_PORT"
-                break
-            else
-                if [[ "$INPUT_PORT" =~ ^[0-9]+$ ]] && [ "$INPUT_PORT" -ge 1 ] && [ "$INPUT_PORT" -le 65535 ]; then
-                    if (ss -tuln 2>/dev/null | grep -q ":$INPUT_PORT " || netstat -tuln 2>/dev/null | grep -q ":$INPUT_PORT "); then
-                        echo -e "\033[31m❌ 端口 $INPUT_PORT 已被占用，请重新输入或使用推荐端口。\033[0m"
-                    else
-                        AGENT_PORT="$INPUT_PORT"
-                        break
-                    fi
-                else
-                    echo -e "\033[31m❌ 输入非法！端口范围应为 1-65535。\033[0m"
+        if [ "$ONECLICK_AGENT" == "true" ]; then
+            INPUT_PORT="${IPS_AGENT_PORT:-$RANDOM_PORT}"
+            if [[ "$INPUT_PORT" =~ ^[0-9]+$ ]] && [ "$INPUT_PORT" -ge 1 ] && [ "$INPUT_PORT" -le 65535 ]; then
+                if (ss -tuln 2>/dev/null | grep -q ":$INPUT_PORT " || netstat -tuln 2>/dev/null | grep -q ":$INPUT_PORT "); then
+                    echo -e "\033[31m⛔ [One-click] 指定端口 $INPUT_PORT 已被占用。\033[0m"
+                    exit 1
                 fi
+                AGENT_PORT="$INPUT_PORT"
+            else
+                echo -e "\033[31m⛔ [One-click] IPS_AGENT_PORT 非法，端口范围应为 1-65535。\033[0m"
+                exit 1
             fi
-        done
+        else
+            while true; do
+                read -p "请输入 Webhook 监听端口 (回车采用推荐, 或手动输入): " INPUT_PORT
+
+                if [ -z "$INPUT_PORT" ]; then
+                    AGENT_PORT="$RANDOM_PORT"
+                    break
+                else
+                    if [[ "$INPUT_PORT" =~ ^[0-9]+$ ]] && [ "$INPUT_PORT" -ge 1 ] && [ "$INPUT_PORT" -le 65535 ]; then
+                        if (ss -tuln 2>/dev/null | grep -q ":$INPUT_PORT " || netstat -tuln 2>/dev/null | grep -q ":$INPUT_PORT "); then
+                            echo -e "\033[31m❌ 端口 $INPUT_PORT 已被占用，请重新输入或使用推荐端口。\033[0m"
+                        else
+                            AGENT_PORT="$INPUT_PORT"
+                            break
+                        fi
+                    else
+                        echo -e "\033[31m❌ 输入非法！端口范围应为 1-65535。\033[0m"
+                    fi
+                fi
+            done
+        fi
         echo -e "✅ 已锁定 Webhook 通讯端口: \033[32m$AGENT_PORT\033[0m"
     fi
 
@@ -467,6 +550,32 @@ if [ "$UPGRADE_MODE" == "false" ]; then
 
     [[ -n "$DETECT_V4" ]] && { IP_OPTIONS+=("$DETECT_V4"); IP_PROTO+=("4"); }
     [[ -n "$DETECT_V6" ]] && { IP_OPTIONS+=("$DETECT_V6"); IP_PROTO+=("6"); }
+
+    if [ "$ONECLICK_AGENT" == "true" ]; then
+        if [ -n "${IPS_PUBLIC_IP:-}" ]; then
+            PUBLIC_IP=$(echo "$IPS_PUBLIC_IP" | tr -cd 'a-fA-F0-9.:[]')
+            [[ "$PUBLIC_IP" == *":"* ]] && IP_PREF="6" || IP_PREF="4"
+        elif [ "${IPS_IP_VERSION:-4}" == "6" ] && [ -n "$DETECT_V6" ]; then
+            PUBLIC_IP="$DETECT_V6"
+            IP_PREF="6"
+        elif [ -n "$DETECT_V4" ]; then
+            PUBLIC_IP="$DETECT_V4"
+            IP_PREF="4"
+        elif [ -n "$DETECT_V6" ]; then
+            PUBLIC_IP="$DETECT_V6"
+            IP_PREF="6"
+        else
+            echo -e "\033[31m⛔ [One-click] 未能自动探测公网 IP，请设置 IPS_PUBLIC_IP。\033[0m"
+            exit 1
+        fi
+
+        if [ -z "$PUBLIC_IP" ]; then
+            echo -e "\033[31m⛔ [One-click] IPS_PUBLIC_IP 非法。\033[0m"
+            exit 1
+        fi
+
+        echo -e "\033[32m✅ [One-click] 自动选择公网 IP: ${PUBLIC_IP}\033[0m"
+    else
 
     if [ ${#IP_OPTIONS[@]} -eq 0 ]; then
         echo -e "\033[33m⚠️ 雷达受阻：未能自动探测到公网 IP，请手动指定。\033[0m"
@@ -504,6 +613,8 @@ if [ "$UPGRADE_MODE" == "false" ]; then
     fi
 
     # [容灾防线] 为含冒号的 IPv6 数据自动装卸方括号护盾，保障下游组件识别不崩溃
+    fi
+
     if [[ "$PUBLIC_IP" == *":"* ]] && [[ "$PUBLIC_IP" != *"["* ]]; then
         SAFE_PUBLIC_IP="[${PUBLIC_IP}]"
     else
@@ -558,7 +669,11 @@ if [ "$UPGRADE_MODE" == "false" ]; then
     if [[ -n "$TG_TOKEN" ]] && [[ -n "$CHAT_ID" ]]; then
         echo -e "\n\033[36m[4.8/7] 节点展示别名设定 (用于面板友好显示)...\033[0m"
         echo -e "💡 系统底层的不可变主键为: \033[33m${NODE_NAME}\033[0m"
-        read -p "请输入节点展示别名 (如'纽约机房', 回车使用默认): " CUSTOM_ALIAS
+        if [ "$ONECLICK_AGENT" == "true" ]; then
+            CUSTOM_ALIAS="${IPS_ALIAS:-}"
+        else
+            read -p "请输入节点展示别名 (如'纽约机房', 回车使用默认): " CUSTOM_ALIAS
+        fi
 
         if [ -n "$CUSTOM_ALIAS" ]; then
             NODE_ALIAS=$(echo "$CUSTOM_ALIAS" | tr -d '"'\''\`\$\|&;<>\n\r' | cut -c 1-20)
@@ -1129,6 +1244,22 @@ if [[ -n "$TG_TOKEN" ]]; then
         else
             FW_MSG="iptables -I INPUT -p tcp --dport $AGENT_PORT -j ACCEPT"
         fi
+    fi
+
+    if [ "$ONECLICK_AGENT" == "true" ] && [ "${IPS_OPEN_FIREWALL:-false}" == "true" ]; then
+        if command -v ufw >/dev/null 2>&1 && ufw status | grep -qw active; then
+            ufw allow "$AGENT_PORT/tcp" >/dev/null 2>&1 || true
+        elif command -v firewall-cmd >/dev/null 2>&1 && systemctl is-active firewalld | grep -qw active; then
+            firewall-cmd --zone=public --add-port="$AGENT_PORT/tcp" --permanent >/dev/null 2>&1 || true
+            firewall-cmd --reload >/dev/null 2>&1 || true
+        elif command -v iptables >/dev/null 2>&1; then
+            if [[ "$SAFE_PUBLIC_IP" == *":"* ]] && command -v ip6tables >/dev/null 2>&1; then
+                ip6tables -I INPUT -p tcp --dport "$AGENT_PORT" -j ACCEPT >/dev/null 2>&1 || true
+            else
+                iptables -I INPUT -p tcp --dport "$AGENT_PORT" -j ACCEPT >/dev/null 2>&1 || true
+            fi
+        fi
+        echo -e "\033[32m✅ [One-click] 已尝试放行本机防火墙 TCP $AGENT_PORT。\033[0m"
     fi
     
     echo -e "\n\033[31m⚠️ 【高危警告】您的节点通讯身份已永久锁定为公网 IP: $SAFE_COMM_IP\033[0m"

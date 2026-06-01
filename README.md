@@ -72,6 +72,7 @@ sudo bash master/install_master.sh
 cd IP-Sentinel
 sudo bash core/install.sh
 ```
+- Agent 一键非交互部署请看 [AGENT_ONECLICK.md](./AGENT_ONECLICK.md)。
 - 激活节点：安装完成后，您的手机会收到一条 #REGISTER# 注册暗号，将其转发给您自己的机器人即可完成编队入库。
 
 ### 🔸 模式 B：官方公共模式
