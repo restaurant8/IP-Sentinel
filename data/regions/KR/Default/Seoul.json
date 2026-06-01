@@ -1,0 +1,53 @@
+{
+  "region_name": "South Korea - Seoul",
+  "google_module": {
+    "base_lat": 37.5665,
+    "base_lon": 126.978,
+    "lang_params": "hl=ko&gl=KR",
+    "valid_url_suffix": "co.kr"
+  },
+  "trust_module": {
+    "white_urls": [
+      "https://news.google.com/rss/articles/CBMic0FVX3lxTE1OSldCdUtWSzVyUmw4V3BUNl9rZE12ODdJajNVWHg3RG9hYm1neTJ3a29Ja05Dc2tTR2VvelNHR0RRQXViUVZTUGdwd0RIdzV3dW1ILWF4WE01QkxRYV9QTmFJWjk1X0NkclBmbDA1SkhjMk3SAWZBVV95cUxQNE9iTHJUbkxVSW1HSlpqUV9jNU8zWVk0TkJmd3d2TmhMemZvVWdjc3hrb3BEcTA5MUNkcF9nNWh3Q0lwLU9yZC11LU9DUzd2eFptUmNQZTRDV3prV2V2RzhFVFNrdEE?oc=5",
+      "https://news.google.com/rss/articles/CBMiW0FVX3lxTE9sYzJCbVlQcjY5cGs0djZJVzVVbjdRbGNMTzNlaVliSU9DeC1qWUlVTWxtdEVNRG5qVzRmRGNwVDdUeXRZQTVFaTl3RE9FX3ZXMFZnOWJtTFo3Y1k?oc=5",
+      "https://news.google.com/rss/articles/CBMid0FVX3lxTE0tMHNmdUFzc2xzR2x1S2FWQWptSFZuTjdINVNtbzgxcXduOVAwSHNtQWNaaF9FSDlDUXJSMml1alVLRUdvcG8xNTNoYzZ6dFBfM0pYUTFyY2lUZU5hdTB2ZnFVRHlTNXNFbWMweG9tNEt1M2JLM0NJ0gF3QVVfeXFMT243Tkp4eV9DclZCLVhKUGZoajk5emVGZFdEN25NNV95TUFVYVJtS3daazBIRUhJdThOU1N1djA0RnFlVXlaeGtNN01yTmlrYmZDMHZCVWxTLVZfcTBpSURJcUpJWjlDYlFqUDAxTTZJWThHVUFpNDQ?oc=5",
+      "https://www.coupang.com/",
+      "https://news.google.com/rss/articles/CBMiWkFVX3lxTE01czlCQlNpQVRKNXZnal9CMWRaaDc1bGNBQ0tyRHJqLUZQZ0dFbWlVWmdEdUlJcnZXb0tYaGJDd0k3OWxidFJObEJiazBlT1RQMU1CX090clYtQdIBX0FVX3lxTFA2Z0UyZGVVNHZBM0R4LTIxX3M3NWZFSUVHQmFEdHRBSEFnOTh4M2VnQ0h2cE9XZnFKQ1VsMmZiUldVVUVRV1UxVk5PX1dmYmV5a3hjTS15UUJnQTRxcHZv?oc=5",
+      "https://news.google.com/rss/articles/CBMiVEFVX3lxTFA5UVhWbnl2b3VOb3lrM3VWQjlBaUozLTBpR3kzc3ZNa1BLUkJ4S2pmVjRWTzNYX1VvLVJXWjZfSXhOaWw4Yk1mVk0zQzR1ZUhFWTQzMQ?oc=5",
+      "https://news.google.com/rss/articles/CBMiW0FVX3lxTE82WnBDNlhaeE14blJYWWJLOFlubVRHUTNUckRQVnBMQnBSVDl0RFIxME5xQklBX0lHandCUHJ1UU9KX21RYngxbS1hZ19nZzVBUU0xcEtKTmwwUXfSAWBBVV95cUxQcTFEUTAwMURmcWFHWFpoTE1NbmNzQkdTSmxkNHM1d2hxOTFSWkpvLVJqWGZmWjZ0M0RocWRzWFIyeWc3RUxRamI4Sk1ZajVtNzRucUhpVlR3dlVGOVA5MzM?oc=5",
+      "https://news.google.com/rss/articles/CBMieEFVX3lxTE1tRVBmaXFQQmktQjdUaVVHNFh0RTVmQlZZejR0MDdxcjhEZFhpV1ZRRXdQdXg0dHNxYzVUWkgyRjg3cm5LcFJJNkFUTlhOTzZEUExxSlNLQ3hQMmZ0YU9DbllRNUFrd2c2aWota0Q2b3NQMGVSa0c2atIBeEFVX3lxTE9IZ0ZuRGQ4OEQ4WVkyei1vdTlNbVp2WWZMc1MxelVNTVIzMG1PZmlrbFN2emxfYjdUcHA1NmlqWjNyNDhwOU9ad29UTy1ESlpIaTFGR25nNHd1T1haZXpqcFRXamxuS21sMHJ1QUltckNTdmZhcW1nOA?oc=5",
+      "https://news.google.com/rss/articles/CBMiWkFVX3lxTE1lSjJ4UE1uSVRFWHQ0TjRNZEl4SndjblR0alZQVi1vTGxRQnkxU0E1Y0lsQ2tlY29PWFhTMmNteHQycHVpYU5mQjFzd3Jua216czRXUmV2THlMQdIBX0FVX3lxTE82WW1Qa3BCN0RWb0VnX1NNR2JyanRuMW5vdlJxRE9sUTd1NFU5QXJsMTlBVUhyYUpzc3Q2TmRVM3loUjJuZnQ3U2ZybWxSQ0JOLVczYm83MnJsLXhwd1g0?oc=5",
+      "https://www.kakao.com/",
+      "https://news.google.com/rss/articles/CBMiW0FVX3lxTE1WNS1QWWdldUd2a3dEdnhMRU5MckRnWGtPQXJLdEpDYWlpRFNfOTJNdUJMMlA2S3VyQkpKSmR6ZFNGR2ZUZXFsaHdLTVFTQWx4UnFBSDdONFp6dWvSAWBBVV95cUxQUVBmSjB2a0hVaTgyYzhKam9VRWJ1VE9Va21yRGNaZWN5V3ZpbXcwUVBtZFFRbjdrb3RJZjN6WlZZN3dwekh0alRRb1U1TlZpQkNEUWNFSlBOcTQwTkdXbVg?oc=5",
+      "https://news.google.com/rss/articles/CBMiXkFVX3lxTE02dXEtd3BYY2l2WW9WSHY2aDl4NjVMWDF3Vi1PWnF2TzA2bTdWNjhSckF0Nml3bEhQUGJ2aFkya2JXbl82eGZSaUp6QUo1dmltUlJOcmFvME51SlVseFE?oc=5",
+      "https://www.korea.kr/",
+      "https://www.daum.net/",
+      "https://news.google.com/rss/articles/CBMigAFBVV95cUxQNXoyQ1pRckNtMDZLeklHNmpTRDRGbWd4Tm9VYldhLWV0WnppU1FLMmhOLUpkM3RNWngzd3lXRUJBN3FYaS1TdFNmcGl6N1dydEJTYUU4Tmhob25qbEZraXpLOTNyV24wTWp4dVN3cFN0cVZPeUktU19ZMWJZUzRZcQ?oc=5",
+      "https://news.google.com/rss/articles/CBMiakFVX3lxTE4zc0NpQ0k1YW1WOW1uN0IzY0x4RTJvNGdyeDR3YnhHUmFfeVF6V1VXWTJyTFRENWwzSi1sU1lvb2dQUUdsNFItVnZULUlCZFNNeEFtc09yVnlDZmFEdzRiYjRmdmIzSHNDLVE?oc=5",
+      "https://news.google.com/rss/articles/CBMiWEFVX3lxTE1IS3gyQVNhVVZKVW9QbmVLUGsyeHhqRjFvN3VoY3RJcGQzRmFuck9PZTAwMXVTcFB0ak9DclBhS095TGxPM2pGVlJJbm4xSC1fQkkxYTYzQ28?oc=5",
+      "https://news.google.com/rss/articles/CBMiU0FVX3lxTE51bjBEZzFzX1EtOS1OTkFETVIzSncwTmRLU09TS0w4OHVjS3dOcW41Yjkxd3hwWWZ4UWNkdTlrRWNieEtxRGVGUkZDNl9LMTFFQ2h3?oc=5",
+      "https://news.google.com/rss/articles/CBMiiwFBVV95cUxQSy0yU3FHNnBDZlNvaGh6V3ByZVROWlJIQmItNGV6TU9VWUZLci1SMFZsQlpiRnJEUzdlakNYYmZhRFhfSHIwN0NoVHJ0YmZ5Zll1V0wtekxlMmJIOV9UNkh6VmZkeV9CRjNXZGJBaVVxMTJ6UlYwSkxHazB0VXFnX0JDd28ycEVwWmY0?oc=5",
+      "https://news.google.com/rss/articles/CBMiT0FVX3lxTE9XeU93MldzXy1QUUVVVGNoajdwVXczVHpKSnZielhYLXdOZkc5NG1Rbk5ma2NZVk96WmlSRm1ZT1k5MGVFd0JlOXI5YmI3RjQ?oc=5",
+      "https://news.google.com/rss/articles/CBMihAFBVV95cUxQTzExYjNpNmNXZXpHWmREd0xJdVFIRVEtaUEycWxjaWtKRDFUQTFpQnZ4dDJ6dDA1clZfbkZzbnlYVVdQRC1FVVBaUmJNYTBFcE5UbnFTcTcwQS01bjNwZ0RFUlJ0QXBEbnJUUWxCRzgxU21sUXVSNDNSZHlQd2lHdVYzeWbSAXdBVV95cUxPNkNWR1ZMejVMLURFbUxxMkZJU0owQVgxNkJ2MUFiQ1pjSGpsdWtaUkFHdXVsZHJ1emZkMTZ3TjFmZWszczIxWmt2N01MQ1JFTDdvTGJaSC1MbmpIVDF4RG05ejNudy1EX1IzSlUwUVZGN3E0UGJWbw?oc=5",
+      "https://news.google.com/rss/articles/CBMicEFVX3lxTE45VnZQRWtmMXAwU0pXRy1KYlY0dWxfOGZ0YWdEcF9GSENCS0o4S0FQXzZvWVRBUEFnWTZUSDJQTW8xWmxIc0dYdk4ydk9sbWlSSllnWDNVa0RUZDdvVmlIUFdpYUNDRzNNZDFWa2pxa04?oc=5",
+      "https://news.google.com/rss/articles/CBMiXkFVX3lxTE43X2NqaHdyY0tLZ1hETjRWWjgyNW05UGhQUmVJTnZCUndpVGoxNnd1YWN5cjg4WkFWUFN2Y01HUFNjMUM5VGVXTW1mOXJrQUV3MUZkM2Z5bmdVWUZ3cFE?oc=5",
+      "https://www.kbstar.com/",
+      "https://news.google.com/rss/articles/CBMiXkFVX3lxTFA1OTF1c1BUWnZHbFgzVVNEYTZtZThCSnUxTDVNQk1mNVhPZlhJWDR0SmNaMmoyQVBkX0dTcnVIYXFjT2ktRW03bktRclNGZXg4c1RuSU5kM2xRNHVtT0HSAWNBVV95cUxNZEhnTTFpRWctTFVZMS1LZlhrN2RYZDNINXdyWmI1aU1UN2R0VGhsZ3RDQW82amJRak8xRjhrSV9OWXdWNXdwemtyYUxsSFNieW5ONHpiZ1BxOVJNWGtfSGxSTXM?oc=5",
+      "https://news.google.com/rss/articles/CBMidEFVX3lxTE8tWVVnT1NxWjB3YnItR1A3MGpNSTU0bDlBMUlaNEE2dWIxcEpLTHNiZFZfRDR4QmxLRFN6S1k0eFFxcEJqRERYczhYdHZPSGZ3UDRXcVNjZ2Vnd1NxcE0xU1IzNVBvQnpxUEl4dWdSa09PMWJp?oc=5",
+      "https://news.google.com/rss/articles/CBMid0FVX3lxTE94STlnSjdiajNVN0VSdEVoT1k3QVljeXU5ak1laDFRWHZaWlFCOWt6aTdDY19ZS3ctc1NqZUhDbW5UR1d6Q2xOSTV2dV9TVlItTkF6NzhZV0swa0lPSWEtSXhvd2Ytei1iRlVqa0NhTVF5SGIyRFpN0gFmQVVfeXFMTkxFNVdYR2RaMGczTXZCcnNXLWdUQmFHQ0x3SlkwN2g1T0plUlpIRUNwXzNQbVBXRHJ3cnBQMkFIUFFtT2FnZHV6dExqUlBrREdHRTZ4ejYtM3pSTnUtZXJUWHNOMy13?oc=5",
+      "https://news.google.com/rss/articles/CBMijgFBVV95cUxNRlc5Q2NxV25BR01Hc1Q0b0lxSV9YT291SUNjMG5Odnc2XzQ2RExaUlJyWU9iRmh1MnhXdHlGSzVuc19reXpVNmN6OW1oNEl3S2tRa1hHQkJvNWI2eG1HeVJVRnRkREVrNmFLZnFaT0tTWXZMUV9iQkVneE1EdExoaTdWNUxaLXNnLXhQUWNB?oc=5",
+      "https://news.google.com/rss/articles/CBMiiwFBVV95cUxPUmtoMnVoN2F3eUNfNUs4QnNXT3ZtZkkzMkM5cnlMbWtCcm5nS3h2Rl9hZFRjdG4wLVluX0x3Y2JoMi1LalVrV3YwQjRxOW9kTkpOTTJJS2tLZEpOVUVXVWtBMWVJTVZFSGt6MjNEcmN5alRSa2Zzckd3eEhSdm4wVkg1WmtmYXAtci1n?oc=5",
+      "https://news.google.com/rss/articles/CBMiXkFVX3lxTE1DWEg0N2sweFM2U3ZTWEhlNnl2QmFVemRjRkhkNHpjU1Jzd1VfdzNpWUdGM0pfeFZKU2xyN0NoaWJPZVRpVjBuZzNmWl9Sc1JRZW5qS3I2eDJKeFRqQWc?oc=5"
+    ],
+    "static_urls": [
+      "https://www.daum.net/",
+      "https://www.korea.kr/",
+      "https://www.snu.ac.kr/",
+      "https://www.kakao.com/",
+      "https://www.kbstar.com/",
+      "https://www.coupang.com/",
+      "https://www.naver.com/",
+      "https://www.hometax.go.kr/"
+    ]
+  }
+}
