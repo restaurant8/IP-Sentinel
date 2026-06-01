@@ -6,7 +6,7 @@ The hardened Agent installer supports a non-interactive mode:
 sudo env \
   IPS_TG_TOKEN='123456:YOUR_BOT_TOKEN' \
   IPS_CHAT_ID='123456789' \
-  IPS_REGION='US/CA/Los_Angeles' \
+  IPS_REGION='auto' \
   IPS_ALIAS='la-agent-1' \
   IPS_AGENT_PORT='35271' \
   IPS_OPEN_FIREWALL='true' \
@@ -30,7 +30,7 @@ Required variables:
 
 - `IPS_TG_TOKEN`: your private Telegram bot token.
 - `IPS_CHAT_ID`: your Telegram chat ID.
-- `IPS_REGION`: deployment region in `COUNTRY/STATE/CITY` format from `data/map.json`.
+- `IPS_REGION`: use `auto` to infer the country from the server public IP, specify only a country code such as `US`, or specify `COUNTRY/STATE/CITY` from `data/map.json`.
 
 Optional variables:
 
@@ -39,6 +39,8 @@ Optional variables:
 - `IPS_PUBLIC_IP`: manually pin the public IP when auto-detection is wrong.
 - `IPS_IP_VERSION`: set to `6` to prefer IPv6 when available. Defaults to IPv4.
 - `IPS_OPEN_FIREWALL`: set to `true` to attempt local firewall opening.
+
+Auto mode uses `api.ip.sb/geoip` to detect the public IP country, then selects the matching country in `data/map.json`. If city/state matching is unavailable, it falls back to the first configured city for that country. Use a manual `IPS_REGION` when you need an exact city.
 
 Common region examples:
 

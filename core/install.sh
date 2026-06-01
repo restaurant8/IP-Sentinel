@@ -300,15 +300,53 @@ echo -e "\033[32m✅ 环境清理完毕，幽灵进程已肃清！\033[0m"
 if [ "$UPGRADE_MODE" == "false" ]; then
 
     if [ "$ONECLICK_AGENT" == "true" ]; then
-        if [ -z "${IPS_REGION:-}" ]; then
-            echo -e "\033[31m⛔ [One-click] 缺少 IPS_REGION。格式示例: US/CA/Los_Angeles 或 SG/Default/Singapore\033[0m"
-            exit 1
+        IPS_REGION=$(echo "${IPS_REGION:-auto}" | tr -d '[:space:]')
+        IPS_REGION_MODE=$(echo "$IPS_REGION" | tr 'A-Z' 'a-z')
+
+        if [ -z "$IPS_REGION" ] || [ "$IPS_REGION_MODE" == "auto" ]; then
+            GEO_JSON=$(curl -${IPS_IP_VERSION:-4} -s -m 5 api.ip.sb/geoip 2>/dev/null || curl -s -m 5 api.ip.sb/geoip 2>/dev/null || true)
+            AUTO_COUNTRY=$(echo "$GEO_JSON" | jq -r '.country_code // .countryCode // .country // empty' 2>/dev/null | tr 'a-z' 'A-Z' | tr -cd 'A-Z0-9')
+            AUTO_STATE=$(echo "$GEO_JSON" | jq -r '.region_code // .regionCode // .region // empty' 2>/dev/null | sed 's/[ -]/_/g' | tr -cd 'a-zA-Z0-9_-')
+            AUTO_CITY=$(echo "$GEO_JSON" | jq -r '.city // empty' 2>/dev/null | sed 's/[ -]/_/g' | tr -cd 'a-zA-Z0-9_-')
+
+            if [ -z "$AUTO_COUNTRY" ]; then
+                echo -e "\033[31m⛔ [One-click] 无法通过公网 IP 自动判断国家，请手动设置 IPS_REGION。示例: US/CA/Los_Angeles\033[0m"
+                exit 1
+            fi
+
+            COUNTRY_ID="$AUTO_COUNTRY"
+            STATE_ID=$(jq -r --arg country "$COUNTRY_ID" --arg state "$AUTO_STATE" '.continents[].countries[] | select(.id==$country) | .states[] | select(.id==$state) | .id' "${SECURE_TMP}/map.json" | head -n 1)
+            if [ -z "$STATE_ID" ]; then
+                STATE_ID=$(jq -r --arg country "$COUNTRY_ID" '.continents[].countries[] | select(.id==$country) | .states[0].id // empty' "${SECURE_TMP}/map.json")
+            fi
+
+            CITY_ID=$(jq -r --arg country "$COUNTRY_ID" --arg state "$STATE_ID" --arg city "$AUTO_CITY" '.continents[].countries[] | select(.id==$country) | .states[] | select(.id==$state) | .cities[] | select(.id==$city) | .id' "${SECURE_TMP}/map.json" | head -n 1)
+            if [ -z "$CITY_ID" ]; then
+                CITY_ID=$(jq -r --arg country "$COUNTRY_ID" --arg state "$STATE_ID" '.continents[].countries[] | select(.id==$country) | .states[] | select(.id==$state) | .cities[0].id // empty' "${SECURE_TMP}/map.json")
+            fi
+
+            if [ -z "$STATE_ID" ] || [ -z "$CITY_ID" ]; then
+                echo -e "\033[31m⛔ [One-click] 已识别国家 ${COUNTRY_ID}，但本地 data/map.json 暂无匹配区域，请手动设置 IPS_REGION。\033[0m"
+                exit 1
+            fi
+
+            IPS_REGION="${COUNTRY_ID}/${STATE_ID}/${CITY_ID}"
+            echo -e "\033[32m✅ [One-click] 已根据公网 IP 自动判断区域: ${IPS_REGION}\033[0m"
         fi
 
         IFS='/' read -r COUNTRY_ID STATE_ID CITY_ID <<< "$IPS_REGION"
-        COUNTRY_ID=$(echo "$COUNTRY_ID" | tr -cd 'a-zA-Z0-9')
+        COUNTRY_ID=$(echo "$COUNTRY_ID" | tr 'a-z' 'A-Z' | tr -cd 'A-Z0-9')
         STATE_ID=$(echo "${STATE_ID:-Default}" | tr -cd 'a-zA-Z0-9_-')
         CITY_ID=$(echo "$CITY_ID" | tr -cd 'a-zA-Z0-9_-')
+
+        if [ -n "$COUNTRY_ID" ] && { [ -z "$STATE_ID" ] || [ -z "$CITY_ID" ]; }; then
+            STATE_ID=$(jq -r --arg country "$COUNTRY_ID" '.continents[].countries[] | select(.id==$country) | .states[0].id // empty' "${SECURE_TMP}/map.json")
+            CITY_ID=$(jq -r --arg country "$COUNTRY_ID" --arg state "$STATE_ID" '.continents[].countries[] | select(.id==$country) | .states[] | select(.id==$state) | .cities[0].id // empty' "${SECURE_TMP}/map.json")
+            if [ -n "$STATE_ID" ] && [ -n "$CITY_ID" ]; then
+                IPS_REGION="${COUNTRY_ID}/${STATE_ID}/${CITY_ID}"
+                echo -e "\033[32m✅ [One-click] 已根据国家代码自动补全区域: ${IPS_REGION}\033[0m"
+            fi
+        fi
 
         if [ -z "$COUNTRY_ID" ] || [ -z "$STATE_ID" ] || [ -z "$CITY_ID" ]; then
             echo -e "\033[31m⛔ [One-click] IPS_REGION 格式无效。格式示例: US/CA/Los_Angeles\033[0m"
