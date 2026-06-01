@@ -262,8 +262,18 @@ while true; do
                     continue
                 fi
 
+                # [v4.2.2 容灾对齐] 允许 agent_ip 字段以逗号分隔的形式完整固化多路由通道
                 db_exec "INSERT INTO nodes (chat_id, node_name, agent_ip, agent_port, last_seen, region, node_alias, enable_ota) VALUES ('$CHAT_ID', '$NODE_NAME', '$AGENT_IP', '$AGENT_PORT', CURRENT_TIMESTAMP, '$AGENT_REGION', '$NODE_ALIAS', '$AGENT_OTA') ON CONFLICT(chat_id, node_name) DO UPDATE SET agent_ip='$AGENT_IP', agent_port='$AGENT_PORT', last_seen=CURRENT_TIMESTAMP, region='$AGENT_REGION', node_alias='$NODE_ALIAS', enable_ota='$AGENT_OTA';"
-                send_msg "$CHAT_ID" "✅ **司令部确认 (v${MASTER_VERSION})**%0A节点 \`${NODE_ALIAS}\` 档案已录入！"
+                
+                # 动态人性化回执：在 TG 侧清晰地向管理者展示主备双通道的录入态势
+                MAIN_SHOW_IP=$(echo "$AGENT_IP" | cut -d',' -f1)
+                BACKUP_SHOW_IP=$(echo "$AGENT_IP" | cut -d',' -f2-)
+                if [ -n "$BACKUP_SHOW_IP" ]; then
+                    SHOW_MSG="✅ **司令部确认 (v${MASTER_VERSION})**%0A节点 \`${NODE_ALIAS}\` 档案已录入！%0A🌐 主通讯：\`${MAIN_SHOW_IP}\`%0A📡 容灾备用：\`${BACKUP_SHOW_IP}\`"
+                else
+                    SHOW_MSG="✅ **司令部确认 (v${MASTER_VERSION})**%0A节点 \`${NODE_ALIAS}\` 档案已录入！%0A🌐 通讯 IP：\`${MAIN_SHOW_IP}\`"
+                fi
+                send_msg "$CHAT_ID" "$SHOW_MSG"
                 
                 REGION_DATA=$(db_exec "SELECT region, COUNT(*) FROM nodes WHERE chat_id='$CHAT_ID' GROUP BY region;")
                 if [ -n "$REGION_DATA" ]; then
