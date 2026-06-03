@@ -29,7 +29,7 @@ trap cleanup_and_exit INT QUIT TERM
 trap 'rm -rf "$SECURE_TMP" 2>/dev/null' EXIT HUP
 
 # 测试期指向当前重构开发分支
-REPO_RAW_URL="https://raw.githubusercontent.com/hotyue/IP-Sentinel/feature/v4.3.0-modular"
+REPO_RAW_URL="https://raw.githubusercontent.com/hotyue/IP-Sentinel/main"
 
 echo -e "\n⏳ 正在拉取 IP-Sentinel v4.3.0 安装模块引擎..."
 

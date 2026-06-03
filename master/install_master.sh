@@ -21,7 +21,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 SECURE_TMP=$(mktemp -d /tmp/ips_master_install.XXXXXX)
-REPO_RAW_URL="https://raw.githubusercontent.com/hotyue/IP-Sentinel/feature/v4.3.0-modular"
+REPO_RAW_URL="https://raw.githubusercontent.com/hotyue/IP-Sentinel/main"
 
 echo -e "\n⏳ 正在拉取 IP-Sentinel Master v4.3.0 安装引擎..."
 
