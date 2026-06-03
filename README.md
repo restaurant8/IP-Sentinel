@@ -13,34 +13,35 @@
 
 ## ✨ 核心极客特性 (Core Architecture)
 
-- 📊 **深海声呐全维探针 (Deep Sea Sonar v4.0.4)**：内嵌强效正则去污的 JSON 提取引擎，无损展现免掩码的真实 IP 情报。聚合 Scamalytics、AbuseIPDB 等五大权威防欺诈库，精准嗅探代理/VPN特征、25端口及流媒体原生解锁状态，并自带 Google “送中”高危预警与污染趋势图谱。
+- 📊 **深海声呐全维探针 (Deep Sea Sonar)**：内嵌强效正则去污的 JSON 提取引擎，无损展现免掩码的真实 IP 情报。聚合 Scamalytics、AbuseIPDB 等五大权威防欺诈库，精准嗅探代理/VPN特征、25端口及流媒体原生解锁状态，并自带 Google “送中”高危预警与污染趋势图谱。
 - ⚡ **无损高并发引擎 (WAL Concurrency)**：司令部 SQLite 数据库全面激活 `WAL` (Write-Ahead Logging) 模式与毫秒级排队算法。即使对 500 台边缘节点发起全军总攻，也能完美规避 `database is locked` 与 Telegram `429` 拦截。
-- 🪶 **抽脂级极简部署 (Zero-Bloat Native)**：全栈剔除第三方依赖，基于 Python3 原生标准库运行。安装强制注入 `--no-install-recommends` 防捆绑参数。无论是 128MB 内存的极简 NAT，还是 Alpine 游击队容器，均可如丝般顺滑运行。
-- 🎛️ **扁平化指挥矩阵 (Flat Command Matrix)**：引入扁平化四级战区降维视图与双轨身份制。深度定制 Inline Keyboard 逃生舱交互，支持原位丝滑重绘 (In-place UI Edit)，实现毫秒级模块热启停与跨地域深海声呐投放。
+- 🪶 **模块化极简部署 (Modular & Zero-Bloat)**：全栈剔除第三方依赖，基于 Python3 原生标准库运行。安装入口采用高内聚低耦合的引导层架构（Bootstrapper），配合 `bash -c` 纯净挂载，全面适配 Debian/Alpine/CentOS 等全系 Linux，杜绝管道流污染。
+- 🎛️ **扁平化指挥矩阵 (Flat Command Matrix)**：引入扁平化四级战区降维视图与双轨身份制。深度定制 Inline Keyboard 逃生舱交互，支持原位丝滑重绘 (In-place UI Edit) 与二次高危确认（Secondary Confirmation），实现毫秒级模块热启停与跨地域深海声呐投放。
 - 🔄 **全栈零信任 OTA 引擎 (Zero-Trust OTA Upgrade)**：首创双端物理熔断机制。长官可通过私有中枢，一键向全舰队下发静默热重载指令；更支持**「司令部金蝉脱壳」**，实现真正的全栈去 SSH 化运维。
-- 🛡️ **SSOT 溯源与热更新装甲 (Smooth Upgrade Engine)**：全系脚本彻底消灭硬编码，动态抓取云端版本信标。自带状态机嗅探逻辑，即便是手动在老节点执行安装，也仅需回车瞬间完成配置继承与无损换代。
+- 🛡️ **自动化防线操纵 (Autopilot Firewalls)**：安装与卸载阶段自动嗅探底层组件（UFW / Firewalld / iptables / ip6tables），实施双栈（IPv4 & IPv6）冗余通道的自动化放行与闭环抹杀，全程零敞露。
 - 🗺️ **全球拓扑矩阵与活体词库 (Global Nexus)**：接入 GitHub Actions 云端兵工厂，每日静默同步全球各大区真实热搜榜单与高权重本土站点，让伪装行为永远贴合当地网络脉搏。
-- 👻 **绝对时空对齐与高频错峰 (UTC-Seeded Scheduling)**：摒弃传统随机轮询，全栈强制接管底层时钟为**绝对 UTC 时间**。全舰队以 **20 分钟 (每日 72 次)** 的极高密度进行养护巡逻，叠加基于部署锚点的天然削峰与随机防并发休眠，完美化解十万级集群的“惊群效应”与 API 熔断。
-- 🖧 **极速预检与三级容灾架构 (Fail-Fast & Fallback)**：底层引擎强力接管发包参数 (`--interface`) 的同时，创新引入 **4 秒极速预检 (Fail-Fast)** 雷达与**三级阶梯脱壳**机制。无论是纯 IPv6 孤岛、WARP 劫持死锁还是复杂 NAT 嵌套，系统均能瞬间避开网络黑洞，彻底杜绝探针假死与流量溢出。
+- 👻 **绝对时空对齐与高频错峰 (UTC-Seeded Scheduling)**：全栈强制接管底层时钟为**绝对 UTC 时间**。全舰队以 **20 分钟 (每日 72 次)** 的极高密度进行养护巡逻，叠加基于部署锚点的天然削峰与随机防并发休眠，完美化解十万级集群的“惊群效应”。
+- 🖧 **三级容灾架构与智能多宿主 (Multi-IP Fallback)**：底层引擎强力接管发包参数 (`--interface`) 并双重过滤 WARP/TUN 等假公网环境。创新引入三级阶梯脱壳与多宿主弹匣装填，彻底杜绝探针假死与流媒体失明误报。
 
 **—— 💎 骨干基建特征 ——**
 - 🏭 **全自动云端军工厂 (CI/CD Data Factory)**：依托 GitHub Actions 构建双轨无人值守流水线。**每月 1 日**批量锻造 4000+ 带有绝对物理分区的原生终端指纹库；**每日凌晨 (UTC)** 实时抓取全球各战区 Google 真实热搜榜单与本土骨干新闻 RSS。为前线舰队源源不断地输送最鲜活的伪装弹药。
 - 🔒 **叹息之墙 (Zero-Trust HMAC)**：底层通讯引入 时间戳 + HMAC-SHA256 军用级动态签名。指令有效期仅 60 秒（阅后即焚），未授权请求直接触发系统级 403 物理熔断，彻底免疫中间人抓包与重放攻击。
 - ☁️ **云端中枢 (Public Master)**：官方公共机器人 [@OmniBeacon_bot](https://t.me/OmniBeacon_bot) ，新手免自建，一键接入极速入伍！同时支持硬核极客私有化 SQLite 分布式部署。
-- 👁️‍🗨️ **玻璃房透明遥测 (Glasshouse)**：基于 Cloudflare Workers 的全透明计数中枢，绝对零隐私收集，仅作原子累加，底层网关源码全开源。
 
-## 📂 项目架构 (Monorepo)
+## 📂 项目架构 (Modular Monorepo)
 
-本项目采用企业级的“主从控制”与“冷热数据分离”双重架构：
+本项目已迈入 v4.3.0 现代工程时代，采用高内聚的模块化与“冷热数据分离”双重架构：
 
 ```text
 📦 IP-Sentinel
  ┣ 📂 .github/workflows/      # 🏭 自动化兵工厂：每月定时触发指纹生成的 CI/CD 流水线
- ┣ 📂 master/                 # 🧠 司令部：SQLite 存储 (含 ip_trend_log 趋势跟踪表)、TG 监听与 Webhook 调度
- ┣ 📂 core/                   # 🛡️ 边缘哨兵：Webhook 被动监听、哈希锚定执行引擎 (集成深海声呐探测模块)
- ┣ 📂 scripts/                # 🐍 兵工厂引擎：基于 Python 的多物理分区 UA 生成器
+ ┣ 📂 install/                # 🧩 [v4.3.0] 安装期编排引擎：模块化解耦的环境判定、交互层与网络防线
+ ┣ 📜 install.sh              # 🚀 Agent 引导程序：以防污染单行指令调用下层模块
+ ┣ 📂 master/                 # 🧠 司令部：SQLite 存储、TG 监听与 Webhook 调度 (含专属引导程序)
+ ┣ 📂 core/                   # 🛡️ 边缘哨兵：Webhook 守护进程、多维交叉探针与原子养护循环
+ ┣ 📂 scripts/                # 🐍 兵工厂引擎：基于 Python 的多物理分区 UA 与热搜词生成器
  ┣ 📂 data/                   # 🗂️ 全球数据规则库 (动态拓扑)
- ┃  ┣ 📜 map.json             # 🌍 全球区域大脑 (v3.5.0 大洲战区拓扑)
+ ┃  ┣ 📜 map.json             # 🌍 全球区域大脑 (战区拓扑引擎)
  ┃  ┣ 📂 regions/             # 🧊 冷数据：按 [国家/省州/城市] 深度细分的 LBS 锚点
  ┃  ┣ 📂 keywords/            # 🔥 热数据：按国家归类的动态搜索词库 (OTA 自动更新)
  ┃  ┗ 📜 user_agents.txt      # 🔥 热数据：由兵工厂每月锻造的绝对坐标专属设备库
@@ -50,6 +51,7 @@
 
 ## 🚀 极速部署 (Quick Start)
 > 🛡️ **跨平台装甲支持**：Debian / Ubuntu / CentOS / RHEL / Alpine Linux / Arch Linux
+⚠️ 指令规范：全系统已升级为防污染内存加载。请严格复制下方完整指令，切勿使用 curl | bash 以防中断！
 系统现提供两种接入模式，请根据您的战术需求选择：
 
 ### 🔹 模式 A：私有独立模式 (全自主、强烈推荐)
@@ -60,12 +62,12 @@
 - **部署 Master (中枢大脑)**：找一台 VPS 作为司令部（仅需部署一台），执行：
 - [官方部署教程](https://blog.iot-architect.com/engineering-practice/ip-sentinel-master-deployment-guide/)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hotyue/IP-Sentinel/main/master/install_master.sh -o /tmp/ins_master.sh && sudo bash /tmp/ins_master.sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/hotyue/IP-Sentinel/main/master/install_master.sh)"
 ```
 - 部署 Agent (边缘哨兵)：在需要养护的机器上执行 Agent 脚本，安装时选择私有独立中枢，并分别输入您自建机器人的 [Token](https://blog.iot-architect.com/engineering-practice/create-private-telegram-bot-via-botfather) 以及您的个人 [Chat ID](https://blog.iot-architect.com/engineering-practice/get-telegram-personal-id-via-userinfobot) ：
 - [官方部署教程](https://blog.iot-architect.com/engineering-practice/ip-sentinel-installation-and-upgrade-guide/)
 ```Bash
-curl -fsSL https://raw.githubusercontent.com/hotyue/IP-Sentinel/main/core/install.sh -o /tmp/ins_agent.sh && sudo bash /tmp/ins_agent.sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/hotyue/IP-Sentinel/main/install.sh)"
 ```
 - 激活节点：安装完成后，您的手机会收到一条 #REGISTER# 注册暗号，将其转发给您自己的机器人即可完成编队入库。
 
@@ -77,7 +79,7 @@ curl -fsSL https://raw.githubusercontent.com/hotyue/IP-Sentinel/main/core/instal
 - 部署 Agent：在目标 VPS 上执行以下指令，安装过程中选择官方公共网关，并输入您的 Chat ID：
 - [官方部署教程](https://blog.iot-architect.com/engineering-practice/deploy-ip-sentinel-official-gateway/)
 ```Bash
-curl -fsSL https://raw.githubusercontent.com/hotyue/IP-Sentinel/main/core/install.sh -o /tmp/ins_agent.sh && sudo bash /tmp/ins_agent.sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/hotyue/IP-Sentinel/main/install.sh)"
 ```
 - 激活节点：同上，将收到的暗号转发给官方机器人即可。
 
@@ -94,7 +96,7 @@ curl -fsSL https://raw.githubusercontent.com/hotyue/IP-Sentinel/main/core/instal
 ### 💻 方式二：SSH 终端平滑直装 (适用于官方网关或老旧节点)
 如果您的节点不支持 OTA，或者您的节点版本过于陈旧 (如 v3.3.1)：
 
-- 登录该节点的 SSH 终端，再次运行上面的 core/install.sh 官方安装指令。
+- 登录该节点的 SSH 终端，再次运行上面的 bash -c 官方单行安装指令。
 
 - 安装引擎自带状态机嗅探逻辑，它会自动读取老旧数据，您只需一路回车，3 秒即可在本地完成配置继承、数据同步与新内核的无损覆盖热重载！
 
