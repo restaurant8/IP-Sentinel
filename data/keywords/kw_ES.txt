@@ -1,3 +1,13 @@
+encuesta
+jubilación
+voto
+zapatero
+tiempo barcelona
+vilaweb
+fútbol
+jalen brunson
+og anunoby
+nba hoy
 weather
 enriqueta chicano jávega
 mundial 2026
@@ -15,7 +25,6 @@ marca
 pedro gallese
 dylan harper
 espagne – pérou
-nba hoy
 la 1
 salario
 álvaro garcía ortiz
@@ -50,7 +59,6 @@ mercedes gonzález fernández
 james handy
 jorge javier vázquez
 madonna
-tiempo barcelona
 emma heming
 tiempo valencia
 méxico - serbia
@@ -64,7 +72,6 @@ corpus christi
 bitcoin
 clima
 meteocat
-og anunoby
 bono sevilla
 henar alvarez
 javier calvo
@@ -91,10 +98,3 @@ carter bryant
 mcdonalds
 tribunal de cuentas
 banco mundial
-economía
-tu cara me suena
-sindicato
-byd
-josé luis rodríguez zapatero
-comprobar cuponazo
-netflix españa
