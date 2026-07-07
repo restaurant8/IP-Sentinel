@@ -12,16 +12,22 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Generate Star History SVG
-        uses: dyte-io/star-history-action@v1.0.3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          output: 'data/star_history.svg'
+      - name: Fetch Star History SVG (Dual Engine)
+        run: |
+          mkdir -p data
+          echo "🚀 [Action] 正在尝试从主引擎拉取星标趋势图..."
+          HTTP_CODE=$(curl -sL -w "%{http_code}" "https://api.star-history.com/svg?repos=${{ github.repository }}&type=Date" -o data/star_history.svg)
+          
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "⚠️ [Warning] 主引擎响应异常 (HTTP $HTTP_CODE)！正在无缝切换至备用引擎..."
+            curl -sL "https://stars.medv.io/${{ github.repository }}.svg" -o data/star_history.svg
+          fi
+          echo "✅ [Success] 星标趋势图拉取完毕！"
 
       - name: Commit & Push Changes
         run: |
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add data/star_history.svg
-          git commit -m "chore: 自动化更新 Star 趋势图" || exit 0
+          git commit -m "chore: 自动化更新 Star 趋势图 (Native Curl 双擎版)" || exit 0
           git push origin main
